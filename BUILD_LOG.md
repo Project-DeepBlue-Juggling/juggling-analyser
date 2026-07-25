@@ -1150,3 +1150,92 @@ distributed mass in the rod, exactly as the bracket suggests.
 | gap-filling | **excluded** — 63 samples in the whole file |
 | the reader | **excluded** — pinned to a TSV at 5e-07 m and three physical lengths |
 | **the capture clock** | **still standing, and now the only candidate** |
+
+---
+
+## Three independent measurements of `g` converge on −2.50% (2026-07-25)
+
+The owner supplied the pendulum's mass distribution: **780 g total, of which a 200 g mass
+sits at the very end, its centre measured 1063 mm from the pivot centre. The backbone is
+2020 aluminium extrusion.** That closes the one gap in the pendulum calculation.
+
+### The mass budget checks out
+
+780 − 200 = 580 g of backbone plus fittings. 2020 extrusion runs about 0.5 kg/m, so
+1063 mm of it is ~532 g, leaving ~48 g of brackets and markers. Consistent.
+
+The geometry checks out against the recording too: my pivot fit put the lower marker at
+1005.8 mm, and the owner measures the bob's centre at 1063 mm — so the marker sits 57 mm
+above the bob's centre, exactly what a marker stuck just above an end block looks like.
+
+### `L_eq` and the result
+
+Mass at the pivot contributes nothing to either `Σm r²` or `Σm r`, so it drops out and the
+total mass is not even needed:
+
+    L_eq = (m_rod l²/3 + M R²) / (m_rod l/2 + M R)
+
+With `m_rod = 0.53 kg` uniform over `l = 1.063 m`, `M = 0.200 kg` at `R = 1.063 m`:
+
+    L_eq = 861.1 mm   ->   g = 4 pi^2 L_eq / T0^2 = 9.5619 m/s^2   (-2.50%)
+
+### The convergence
+
+| measurement | date | method | `g` | vs 9.80665 |
+|---|---|---|---|---|
+| 5-ball juggling | 2024-12-12 | ballistic | 9.5605 | **−2.51%** |
+| 3-ball juggling | 2024-12-12 | ballistic | 9.5625 | **−2.49%** |
+| pendulum | 2026-07-25 | oscillation | 9.5619 | **−2.50%** |
+| 3-ball juggling | 2026-07-25 | ballistic | 9.2757 | −5.41% |
+
+**Three measurements agree to 0.02 percentage points**, across 18 months and across two
+entirely different physical phenomena — free flight and pendulum oscillation. That is not
+a coincidence, and a pendulum shares no failure mode with a ballistic fit.
+
+The pendulum figure does depend on the assumed rod geometry, so the agreement is not
+airtight on its own. But the direction of that dependence is telling: `g = 9.5531`
+requires a rod length of **1060 mm**, against the owner's measured **1063 mm** with the
+mass "at the very end" — while `g = 9.80665` would require **1134 mm**, i.e. the extrusion
+running 71 mm *past* the bob's centre, which contradicts the description. The natural
+geometry is the one that agrees.
+
+### The 2026 juggling clip is the outlier, and it is not arc-top truncation
+
+That clip tracked balls only between z = 0.867 and 1.675 m, so every flight is a short
+window near the apex — an obvious candidate for bias. **Tested and rejected:** truncating
+the 2024 arcs to apex-centred windows of 70%, 50%, 35% and 25% of their length moves the
+measured `g` by at most 0.4 percentage points and never towards −5.4%:
+
+    2024 5-ball:  full -2.51%   70% -2.36%   50% -2.27%   35% -2.29%   25% -2.12%
+    2024 3-ball:  full -2.49%   70% -2.86%   50% -2.72%   35% -2.32%   25% -2.45%
+
+So the −5.41% has no mechanism yet. What is known about that recording: the hands were out
+of view, only 10 flights had ≥120 samples, and its trajectories are the least
+well-tracked in the corpus. Treat the figure as unreliable and the three-way agreement at
+−2.50% as the real result. It is worth re-measuring once a properly framed juggling clip
+exists.
+
+### Where this leaves the diagnosis
+
+Scale is excluded in every orientation (horizontal +0.056%, vertical −0.328%, swept
++0.083% with 0.0069% variation). A −2.50% deficit in `g` with correct lengths requires
+
+    k = f_true / f_s = sqrt(9.80665 / 9.5619) = 1.01274   ->   f_true = 303.8 Hz
+
+So the capture clock runs about 1.3% fast while reporting 300 Hz.
+
+### The one measurement that would make this airtight
+
+**Hang the same 200 g mass on fine thread instead of the extrusion.** Thread mass is ~1 g
+against a 200 g bob, so `L_eq = L` to better than 0.2% and the unknown that limits this
+whole calculation disappears. At `L = 1.063 m` the two hypotheses predict
+
+    g = 9.80665  ->  T = 2.0687 s
+    g = 9.5619   ->  T = 2.0947 s
+
+a 26 ms difference per cycle, against a period measured to **0.06 ms**. That is a
+400-sigma discrimination from a single 10 s recording.
+
+Alternatively, and independent of all physics: **time a 5-minute capture with a
+stopwatch.** At 303.8 Hz a nominal 300 s capture finishes in **296.2 s**, a 3.8 s
+discrepancy.

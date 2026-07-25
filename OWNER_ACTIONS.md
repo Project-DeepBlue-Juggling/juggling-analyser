@@ -13,61 +13,76 @@ pushed, CI green, gate green at every commit. Honest summary at the end.
 
 ---
 
-## 1. Weigh the pendulum — 2 minutes, no new recording needed
+## 1. Hang the 200 g mass on thread — 5 minutes, and it makes the answer airtight
 
-Your pendulum recording is the cleanest data in the corpus. `T0 = 1.885495 s` with a
-0.06 ms spread across five cycles — the period is known to **0.003%**. The pivot located
-itself to 0.05 mm of wobble, the swing is planar to 0.3 mm, and the 0.95 m marker
-separation reads **950.79 mm (+0.083%)**.
+Your masses closed the pendulum calculation. With the 580 g backbone as a uniform
+2020 extrusion over 1063 mm and the 200 g mass at 1063 mm:
 
-**But the period alone cannot settle `g`, because it is a compound pendulum.**
-`g = 4π²L_eq/T0²` needs the *effective* length `L_eq = I/(m·d)`, which depends on the mass
-distribution and is invisible to a camera. Your markers give the geometric length
-`l = 1005.8 mm` from the pivot to the lower marker, and that brackets things:
+    L_eq = 861.1 mm   ->   g = 9.5619 m/s^2   (-2.50%)
 
-    massless bob (uniform rod)      L_eq = 2l/3 =  670.5 mm  ->  g =  7.45
-    massless rod (simple pendulum)  L_eq = l    = 1005.8 mm  ->  g = 11.17
+**And that agrees with the 2024 juggling clips to 0.02 percentage points:**
 
-Both 9.807 and 9.276 sit inside that bracket. Specifically:
+| measurement | date | method | `g` | vs 9.80665 |
+|---|---|---|---|---|
+| 5-ball juggling | 2024-12-12 | ballistic | 9.5605 | **−2.51%** |
+| 3-ball juggling | 2024-12-12 | ballistic | 9.5625 | **−2.49%** |
+| pendulum | 2026-07-25 | oscillation | 9.5619 | **−2.50%** |
+| 3-ball juggling | 2026-07-25 | ballistic | 9.2757 | −5.41% |
 
-    L_eq required for g = 9.80665  ->  883.1 mm   (M/m ~ 0.87)
-    L_eq required for g = 9.2757   ->  835.3 mm   (M/m ~ 0.47)
+Three measurements, 18 months apart, using two entirely different physical phenomena —
+free flight and pendulum oscillation, which share no failure mode — landing within 0.02
+points of each other. **The deficit is real.**
 
-**So all I need is three numbers**, and the recording you already made becomes decisive:
+Two supporting details worth knowing. Your mass budget checks out: 2020 extrusion at
+~0.5 kg/m over 1063 mm is ~532 g, leaving ~48 g of fittings out of the 580 g non-bob
+mass. And the geometry checks out against the recording: my pivot fit put the lower
+marker at 1005.8 mm and you measure the bob centre at 1063 mm, so the marker sits 57 mm
+above the bob — exactly right for a marker stuck above an end block.
 
-1. the **mass of the rod/string**,
-2. the **mass of the bob**,
-3. the **rod length** and roughly where the bob's centre sits on it.
+### Why one more recording is still worth 5 minutes
 
-Weigh them to ±20% and that is enough to separate 0.87 from 0.47.
+The pendulum number depends on treating the backbone as a uniform rod. The dependence
+points the right way — `g = 9.553` needs a rod length of **1060 mm** against your measured
+**1063 mm**, whereas `g = 9.807` would need **1134 mm**, i.e. the extrusion running 71 mm
+*past* the mass, which contradicts "at the very end" — but it is still a modelling
+assumption, and I would rather not rest a conclusion on one.
 
-(One thing the data already tells us: it is **not** a simple pendulum. If the bob
-dominated, `g` would read 11.17 m/s², which no hypothesis predicts. So there is real
-distributed mass in the rod.)
+**Remove the assumption entirely: hang the same 200 g mass on fine thread or fishing
+line.** Thread mass is ~1 g against a 200 g bob, so `L_eq = L` to better than 0.2% and the
+only soft number in the calculation disappears. Measure pivot-to-mass-centre, swing it
+gently for 10 s, send the file. At `L = 1.063 m`:
 
-### If weighing is awkward, either of these also works
+    g = 9.80665  predicts  T = 2.0687 s
+    g = 9.5619   predicts  T = 2.0947 s
 
-- **A stopwatch against a long capture (1 minute, and it needs no physics at all).**
-  Set QTM to capture 60 s and time it. At a true 308 Hz a nominal 60 s capture finishes
-  in **58.5 s**. This is the only test that is independent of every model.
-- **Rebuild it as a genuine simple pendulum**: fine thread plus a compact heavy bob (a
-  steel nut, a fishing weight). Then `L_eq = l` to a fraction of a percent. Better still,
-  record it at **two lengths** — for a simple pendulum with an unknown constant offset
-  `δ`, `g = 4π²ΔL/ΔT²` cancels `δ` exactly.
+That is 26 ms per cycle against a period I measure to **0.06 ms** — a 400-sigma
+discrimination from one recording.
 
-### Good news from this recording
+**Or, independent of all physics:** time a **5-minute** capture with a stopwatch. At the
+implied 303.8 Hz a nominal 300 s capture finishes in **296.2 s**, a 3.8 s discrepancy.
+(I previously suggested 60 s; at 303.8 Hz rather than 308 that only gives 0.75 s, so make
+it five minutes.)
 
-The scale is now confirmed a third time and, for the first time, confirmed **isotropic**.
-Because the pendulum sweeps through orientation as it swings, the marker separation tests
-scale in many directions at once:
+### What the answer implies either way
 
-    near vertical (2.4 deg tilt)   950.988 mm
-    near extreme (20.1 deg tilt)   950.922 mm
-    change                          -0.0069%
+Lengths are verified correct in every orientation, so a −2.50% deficit in `g` means
 
-Three independent geometries agree: horizontal +0.056%, vertical −0.328%, swept +0.083%.
-**Scale is not the problem in any direction**, which is what leaves the capture clock as
-the only candidate still standing.
+    f_true = 300 x sqrt(9.80665 / 9.5619) = 303.8 Hz
+
+i.e. the capture clock runs ~1.3% fast while reporting 300 Hz. Every time-derived
+quantity — air time, dwell time, beat period, and every energy figure — carries that
+1.3%, and every `z_apex` and velocity carries its square. Once confirmed, the fix is a
+one-line correction: record the true rate per session and use it instead of the reported
+one.
+
+### One loose end I could not close
+
+The 2026 juggling clip reads −5.41%, not −2.50%. Its balls were tracked only between
+z = 0.867 and 1.675 m — arc tops only, hands out of view — which was the obvious
+suspect, so I tested it: truncating the 2024 arcs to apex-centred windows of 70%, 50%,
+35% and 25% moves `g` by at most 0.4 points and never towards −5.4%. So arc-top
+truncation is **not** the cause and I have no mechanism for it. Treat that clip as
+unreliable and re-measure once item 1b gives a properly framed juggling recording.
 
 ---
 

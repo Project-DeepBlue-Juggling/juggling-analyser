@@ -300,3 +300,55 @@ def test_scale_is_isotropic_across_orientation() -> None:
         f"separation changed by {relative_change * 100:.4f}% between "
         f"{tilt.min():.1f} deg and {tilt.max():.1f} deg of tilt — anisotropic scale"
     )
+
+
+def test_pendulum_period_is_pinned() -> None:
+    """The period is the one number the pendulum contributes, so pin it.
+
+    Measured to 0.06 ms across five cycles, which is 0.003%. That precision is what makes
+    the pendulum decisive *once* its effective length is known — and it is the reason a
+    26 ms difference between the competing gravity hypotheses is a 400-sigma
+    discrimination (BUILD_LOG, "Three independent measurements").
+
+    Only the measured quantities are asserted here. The inferred `g` depends on the
+    owner-supplied mass distribution, which is not in the repository, so it lives in
+    BUILD_LOG rather than in a test.
+    """
+    session = read_qtm(sample(PENDULUM_QTM), include_unexported=True)
+    trajectories = {t.id: t for t in session.trajectories}
+    upper, lower = trajectories["24"], trajectories["28"]
+    shared = np.intersect1d(upper.frames, lower.frames)
+    times = (shared - 1) / session.f_s
+    top = upper.positions[np.isin(upper.frames, shared)]
+    bob = lower.positions[np.isin(lower.frames, shared)]
+
+    # Pivot: P = top - s*u with s chosen so P is stationary. Linear in s, so exact.
+    rod = bob - top
+    unit = rod / np.linalg.norm(rod, axis=1)[:, None]
+    centred_top = top - top.mean(axis=0)
+    centred_unit = unit - unit.mean(axis=0)
+    s = float((centred_top * centred_unit).sum() / (centred_unit * centred_unit).sum())
+    pivot = (top - s * unit).mean(axis=0)
+    assert s == pytest.approx(0.0550, abs=5e-4), "pivot is 55 mm above the upper marker"
+    radius = float(np.linalg.norm(bob - pivot, axis=1).mean())
+    assert radius == pytest.approx(1.0058, abs=5e-4)
+
+    # Swing angle about the pivot — not about the arc's centroid, which is a trap that
+    # yields a nonsensical 96 deg amplitude.
+    down = unit.mean(axis=0) / np.linalg.norm(unit.mean(axis=0))
+    _w, _sv, vt = np.linalg.svd(centred_unit, full_matrices=False)
+    across = vt[0] - (vt[0] @ down) * down
+    across /= np.linalg.norm(across)
+    relative = bob - pivot
+    angle = np.arctan2(relative @ across, relative @ down)
+    signal = angle - np.median(angle)
+    assert np.degrees(np.abs(signal).max()) == pytest.approx(21.08, abs=0.1)
+
+    upward = [
+        times[i] + (-signal[i] / (signal[i + 1] - signal[i])) / session.f_s
+        for i in range(len(signal) - 1)
+        if signal[i] <= 0.0 < signal[i + 1]
+    ]
+    assert len(upward) == 6, f"expected 6 upward crossings, got {len(upward)}"
+    period = (upward[-1] - upward[0]) / (len(upward) - 1)
+    assert period == pytest.approx(1.900468, abs=1e-4)
