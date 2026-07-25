@@ -479,10 +479,15 @@ unrealistic for 7 balls, but perfectly valid labelled data. The exporter takes
 `io/truth.py` (381 lines) arrived near the end of the run, after the P3 assessment
 below was recorded and after the P4 work had already been validated without them.
 They import cleanly, pass the core-purity AST walk, and are ruff- and mypy-clean, but
-**`tests/test_synth.py` did not arrive, so neither module has a single test and the
-calibration below has not been verified.** Treat them as unreviewed drafts: the next
-session should write the tests, check the calibration table, and only then rely on
-them. Everything in the rest of this section stands as written.
+`tests/test_synth.py` arrived last, with **81 tests, all passing**, and the gate is
+green with them in. So the modules are tested, but note what that does and does not
+mean: **the P4 linking results below were measured without them**, against exact truth
+fragmented by hand rather than against the degradation model. The linker still has
+never been shown an identity swap or a spurious reflection, so its scores remain an
+upper bound. The next session's first job in this area is to run the linker against
+`degrade()` output and see what the swaps cost it. The calibration table has not been
+independently checked by me — the tests assert it, and the tests were written by the
+same agent that chose the presets.
 
 ### What `core/synth.py` was specified to do
 
