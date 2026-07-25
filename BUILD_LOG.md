@@ -909,3 +909,63 @@ it is the real path deviation above.
 - **`OWNER_ACTIONS.md` item 2 is complete.** The static-marker recording asked for has
   been made and the answer is above: true σ = 0.028 mm, 75% white. The item is closed
   rather than left asking for something already delivered.
+
+---
+
+## The gravity anomaly is an ANISOTROPIC scale error — vertical only (2026-07-25)
+
+The owner replaced the calibration recording with 10 s of continuous 3-ball juggling,
+leaving the two 1 m floor markers in place. One file now carries both measurements, and
+together they identify the fault.
+
+    horizontal scale, from the 1 m baseline      +0.056%   (1000.56 mm, sd 0.028 mm)
+    vertical scale, implied by fitted g          -5.11%    (g = 9.2757 m/s^2)
+
+Both in the same recording, the same calibration, the same ten seconds.
+
+### Why that is not a contradiction — and why the earlier conclusion was too quick
+
+The two markers' separation vector is `(-0.9960, +0.0952, -0.0101)` m. It is **99.5%
+along X** and its vertical component is **10 mm out of 1000 mm**. So the baseline
+constrains the *horizontal* scale and carries essentially no information about Z — while
+`g` depends on **nothing but the vertical scale**. The previous entry's conclusion that
+"the scale hypothesis is dead" was therefore wrong: what died was the *isotropic* scale
+hypothesis. An anisotropic one fits every observation made so far:
+
+| observation | isotropic scale | timing | **vertical-only scale** |
+|---|---|---|---|
+| horizontal 1 m reads 1000.56 mm | ✗ (needs 971) | ✓ | ✓ |
+| `g` reads 5.1% low, 2026 | ✓ | ✓ (needs 308 Hz) | ✓ |
+| `g` reads 2.6% low, 2024 | ✓ | ✓ (needs 304 Hz) | ✓ |
+| the two internal clocks agree to 3.3e-07 | ✓ | ✗ | ✓ |
+| static marker noise 0.028 mm | ✓ | ✓ | ✓ |
+
+Only the last column survives every row. A vertical-axis scale error is also a well-known
+mocap failure mode: a wand calibration swept mostly in the horizontal plane, or poor
+vertical camera geometry, constrains Z far more weakly than X and Y.
+
+Note the fault is not static across sessions: −2.6% in December 2024 and −5.1% now, with a
+recalibration somewhere in between. That is consistent with a weakly-determined vertical
+axis being re-fitted badly each time, and it means **the factor cannot be hard-coded** —
+it has to be measured per session.
+
+### The decisive test, and it is two minutes
+
+**Measure a 1 m baseline VERTICALLY** — one marker directly above the other, tape-measured,
+recorded for 10 s. This hypothesis predicts it reads **948.9 mm**; a correct vertical scale
+predicts 1000 mm. Nothing else needs to change.
+
+Ruled out along the way, each with numbers: isotropic scale (the horizontal metre),
+timing (the internal clocks, and it would need 304–308 Hz varying between sessions),
+sensor noise (0.028 mm), air drag (two orders of magnitude too small), a tilted Z axis
+(would need 13°, the data implies 2.4°), gap-filling (63 samples in the whole file), and
+the reader (pinned to a TSV export at 5e-07 m and to a physical metre at 0.2 mm).
+
+### A separate problem with this recording
+
+The ball trajectories only span **z = 0.867 to 1.675 m**, i.e. only the top ~80 cm of each
+arc is tracked; the hands are out of view. So this clip cannot give catches, dwell times or
+a beat grid — its 31 detected flights are arc tops, which is why their apex-above-release
+heights (0.007–0.30 m) are erratic and why `8·z_apex/t_air²` returns nonsense (0.7–37).
+That is a *framing* problem, not a calibration one, and it is worth fixing before the next
+juggling capture: the volume needs to extend down to hand height.

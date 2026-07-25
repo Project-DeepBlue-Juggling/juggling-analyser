@@ -174,17 +174,20 @@ def test_include_unexported_recovers_the_static_markers() -> None:
         assert trajectory.positions[:, 2].mean() < -0.5
 
 
-def test_reader_reproduces_a_tape_measured_metre() -> None:
-    """A second oracle, and this one is physical rather than another file.
+def test_reader_reproduces_a_tape_measured_horizontal_metre() -> None:
+    """A second oracle, physical rather than another file — but only for X and Y.
 
     The TSV test above proves the reader agrees with QTM. It cannot prove either of
-    them is *metrically right* — only that they agree. This one closes that gap: two
-    markers were laid on the floor a tape-measured 1000 mm apart and recorded, so the
-    ground truth comes from outside the software entirely.
+    them is *metrically right*, only that they agree. This closes that gap with ground
+    truth from outside the software: two markers laid on the floor a tape-measured
+    1000 mm apart.
 
-    It is also the measurement that killed the hypothesis that this corpus carries a
-    −2.87% length-scale error, which would have put the pair at 971.3 mm
-    (BUILD_LOG, "Calibration recording").
+    **What it does not constrain is the vertical scale**, and that distinction is the
+    whole finding. The separation vector is 99.5% along X with 10 mm of vertical
+    component, while `g` depends on nothing but the vertical scale — and in this very
+    recording the fitted `g` implies the vertical axis is compressed by 5.1%. The name
+    of this test says "horizontal" for that reason (BUILD_LOG, "anisotropic scale
+    error"). An isotropic −2.87% error is excluded; a vertical-only one is not.
     """
     session = read_qtm(sample(CALIBRATION_QTM), include_unexported=True)
     means = {t.id: t.positions.mean(axis=0) for t in session.trajectories}
@@ -198,7 +201,12 @@ def test_reader_reproduces_a_tape_measured_metre() -> None:
     first, second, distance = metre[0]
 
     assert distance == pytest.approx(CALIBRATION_KNOWN_DISTANCE, abs=CALIBRATION_TAPE_TOLERANCE)
-    assert distance == pytest.approx(1.00022, abs=1e-4), "the pinned measured value"
+    assert distance == pytest.approx(1.00056, abs=1e-4), "the pinned measured value"
+
+    # The point of the test: this baseline is horizontal, so it cannot speak for Z.
+    offset = means[second] - means[first]
+    assert abs(offset[2]) < 0.02, "baseline is horizontal"
+    assert abs(offset[0]) / distance > 0.99, "and essentially all of it is along X"
 
     # Stable to microns across the whole recording: this is a measurement, not a fluke.
     a = next(t for t in session.trajectories if t.id == first)

@@ -13,39 +13,60 @@ pushed, CI green, gate green at every commit. Honest summary at the end.
 
 ---
 
-## 1. Record 10 seconds of juggling in the current setup — 2 minutes, and it closes the last open question
+## 1. Measure a 1 m baseline **vertically** — 2 minutes, and it finishes the diagnosis
 
-**This is now the only thing standing between the gravity anomaly and a diagnosis.**
+Your juggling recording, with the 1 m floor markers still in it, has identified the
+fault. One file, one calibration, ten seconds, two measurements:
 
-Your 1 m calibration recording settled the scale question decisively. The two floor
-markers come out at **1000.22 mm ± 0.02 mm** against your tape's 1000 mm — an error of
-**+0.022%**, where the scale hypothesis needed **−2.87%** (971.3 mm). So the current
-rig's length scale is right, and separately the two clocks inside each `.qtm` agree to
-3.3e-07, which argues against a sample-rate error.
+    horizontal scale, from your 1 m baseline    +0.056%   (1000.56 mm, sd 0.028 mm)
+    vertical scale, implied by fitted g         -5.11%    (g = 9.2757 m/s²)
 
-But the calibration recording is from **2026-07-25** and the juggling clips are from
-**2024-12-12**, with a demonstrably different marker layout in between. So it proves
-*today's* calibration is sound; it cannot prove December 2024's was. The remaining
-hypothesis is that the 2024 session had a bad calibration which has since been fixed —
-and one recording tests it:
+That looks like a contradiction and is not. Your two markers' separation vector is
+`(−0.996, +0.095, −0.010)` m — **99.5% horizontal, with only 10 mm of vertical
+component.** So it pins the horizontal scale and says essentially nothing about the
+vertical one, and `g` depends on **nothing but the vertical scale**. My previous
+conclusion that "the scale hypothesis is dead" was too quick: the *isotropic* scale
+hypothesis is dead. A **vertical-only** scale error fits every observation, and it is
+the only hypothesis that does.
 
-1. **Juggle a `3` cascade for 10 seconds** in the setup exactly as it stands now.
-2. Send the `.qtm`. Nothing else needs to change; leave the robots and the floor
-   markers where they are, so the same file re-confirms the scale.
+**The test:** put the two markers **one directly above the other**, a tape-measured
+1 m apart — hang one from something, or stand a pole up — and record 10 s.
 
-Then:
+- **Reads ≈ 949 mm** → confirmed: your vertical axis is compressed ~5%. That is a
+  calibration problem with a known cause and a known fix (below), and every past
+  recording can be corrected by measuring its own factor.
+- **Reads ≈ 1000 mm** → the vertical scale is fine and I am wrong again; at that point
+  the anomaly has survived every hypothesis I can construct and deserves a fresh pair
+  of eyes.
 
-- **`g` comes out ≈ 9.807** → the 2024 clips were taken under a bad calibration, since
-  corrected. Those two clips can be salvaged with a single 1/0.9713 scale factor, or
-  simply retired in favour of new recordings, and **every future recording is
-  trustworthy**. This is the outcome I expect.
-- **`g` still comes out ≈ 9.55** with the scale verified to 0.022% and the clocks to
-  3.3e-07 → something is wrong that none of my hypotheses covers, and it is worth real
-  investigation. Note that my `g` fitting is not in doubt: on synthetic data that obeys
-  `g` exactly it returns **9.80148 m/s², −0.053%**, over 76 flights.
+**If it confirms, the likely cause is the calibration itself.** A wand sweep performed
+mostly in the horizontal plane, or camera geometry with little vertical parallax,
+constrains Z far more weakly than X and Y. When you next calibrate, make a point of
+sweeping the wand through the **full vertical extent** of the volume — floor to above
+head height — not just across it. Note the fault is not constant: it was −2.6% in
+December 2024 and is −5.1% now, so it is being re-fitted badly each time and cannot be
+compensated with a fixed constant. It has to be measured per session, which is a good
+argument for making a vertical baseline part of your normal setup routine.
 
-If you can spare a second clip, a **deliberate drop** in the same setup would let
-Phase 5's drop rule be built against known truth at the same time.
+**Everything else has been eliminated, each with numbers:** isotropic scale (your
+horizontal metre), timing (the two clocks inside each `.qtm` agree to 3.3e-07, and it
+would need 304–308 Hz varying between sessions), sensor noise (0.028 mm), air drag (two
+orders of magnitude too small), a tilted Z axis (would need 13°; the data implies 2.4°),
+gap-filling (63 samples in the whole file), and the reader (pinned to a TSV export at
+5e-07 m and to your physical metre at 0.2 mm).
+
+---
+
+## 1b. Re-aim the volume before the next juggling capture — worth knowing now
+
+In the new recording the balls are only tracked between **z = 0.867 m and 1.675 m** —
+just the top ~80 cm of each arc. Your hands are out of view. So that clip cannot give
+catches, dwell times, or a beat grid, and its 31 detected flights are arc tops rather
+than throws.
+
+Before the recordings in item 3, extend the capture volume **down to hand height** and
+check in QTM that a ball is tracked continuously through a catch. That single change is
+what makes a recording usable for Phases 5 and 6 rather than for calibration only.
 
 ---
 

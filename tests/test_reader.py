@@ -16,7 +16,7 @@ from juggling_analyser import load
 from juggling_analyser.core.clean import classify_session
 from juggling_analyser.io.qtm import read_qtm, scan_qtm
 
-from .conftest import CALIBRATION_QTM, JUGGLING_QTM_SAMPLES, QTM_SAMPLES, sample
+from .conftest import JUGGLING_QTM_SAMPLES, QTM_SAMPLES
 
 SAMPLES = QTM_SAMPLES
 JUGGLING = JUGGLING_QTM_SAMPLES
@@ -122,24 +122,6 @@ def test_load_helper_classifies() -> None:
     session = load(str(JUGGLING[0]))
     assert any(t.kind == "ball" for t in session.trajectories)
     assert all(t.kind != "unknown" or t.n_samples >= 15 for t in session.trajectories)
-
-
-def test_a_scene_with_no_juggling_yields_no_balls() -> None:
-    """The negative case, and it is a real one.
-
-    `2026-06-10-1m_markers_calibration.qtm` is 10 s of robots and floor markers with
-    nothing thrown. Every trajectory is motionless, so `core.clean` must classify all
-    of them as spurious and `core.flight` must find no flight. A classifier that
-    hallucinated a ball here would be free to hallucinate one anywhere.
-    """
-    from juggling_analyser.core.flight import segment_session
-
-    session, report = classify_session(read_qtm(sample(CALIBRATION_QTM)))
-    assert session.n_trajectories == 26
-    assert report.ball == 0, f"a static scene produced {report.ball} ball trajectories"
-    assert report.unknown == 0
-    assert report.spurious == 26
-    assert segment_session(session, calibrate=False).flights == ()
 
 
 def test_reader_rejects_a_file_that_is_not_a_qtm_measurement(tmp_path: Path) -> None:
