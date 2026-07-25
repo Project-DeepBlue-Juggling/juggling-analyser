@@ -19,7 +19,14 @@ from juggling_analyser.core.trajectory import Session
 from juggling_analyser.io.qtm import QtmScan, read_qtm, scan_qtm
 from juggling_analyser.io.tsv import TsvExport, read_tsv
 
-from .conftest import BALLS_ONLY_QTM, BALLS_ONLY_TSV, sample
+from .conftest import (
+    BALLS_ONLY_QTM,
+    BALLS_ONLY_TSV,
+    CALIBRATION_KNOWN_DISTANCE,
+    CALIBRATION_QTM,
+    CALIBRATION_TAPE_TOLERANCE,
+    sample,
+)
 
 #: Positions must agree to this, per PLAN.md P1.
 POSITION_TOLERANCE = 1e-6
@@ -165,3 +172,43 @@ def test_include_unexported_recovers_the_static_markers() -> None:
         # Static markers on the rig: motionless, and below everything else.
         assert trajectory.height_span < 0.01
         assert trajectory.positions[:, 2].mean() < -0.5
+
+
+def test_reader_reproduces_a_tape_measured_metre() -> None:
+    """A second oracle, and this one is physical rather than another file.
+
+    The TSV test above proves the reader agrees with QTM. It cannot prove either of
+    them is *metrically right* — only that they agree. This one closes that gap: two
+    markers were laid on the floor a tape-measured 1000 mm apart and recorded, so the
+    ground truth comes from outside the software entirely.
+
+    It is also the measurement that killed the hypothesis that this corpus carries a
+    −2.87% length-scale error, which would have put the pair at 971.3 mm
+    (BUILD_LOG, "Calibration recording").
+    """
+    session = read_qtm(sample(CALIBRATION_QTM), include_unexported=True)
+    means = {t.id: t.positions.mean(axis=0) for t in session.trajectories}
+    floor = {i: p for i, p in means.items() if p[2] < 0.0}
+    # The two floor markers are the only pair on the ground about a metre apart.
+    pairs = [
+        (a, b, float(np.linalg.norm(means[a] - means[b]))) for a in floor for b in floor if a < b
+    ]
+    metre = [p for p in pairs if abs(p[2] - CALIBRATION_KNOWN_DISTANCE) < 0.05]
+    assert len(metre) == 1, f"expected one ~1 m floor pair, found {len(metre)}"
+    first, second, distance = metre[0]
+
+    assert distance == pytest.approx(CALIBRATION_KNOWN_DISTANCE, abs=CALIBRATION_TAPE_TOLERANCE)
+    assert distance == pytest.approx(1.00022, abs=1e-4), "the pinned measured value"
+
+    # Stable to microns across the whole recording: this is a measurement, not a fluke.
+    a = next(t for t in session.trajectories if t.id == first)
+    b = next(t for t in session.trajectories if t.id == second)
+    shared = np.intersect1d(a.frames, b.frames)
+    per_frame = np.linalg.norm(
+        a.positions[np.isin(a.frames, shared)] - b.positions[np.isin(b.frames, shared)], axis=1
+    )
+    assert per_frame.std() < 1e-4
+    assert len(per_frame) == 3000
+
+    # And the hypothesis it excludes, stated so the exclusion cannot be lost.
+    assert abs(distance - CALIBRATION_KNOWN_DISTANCE * (1 - 0.0287)) > 0.02

@@ -13,120 +13,67 @@ pushed, CI green, gate green at every commit. Honest summary at the end.
 
 ---
 
-## 1. Settle the gravity discrepancy — 10 minutes, highest value
+## 1. Record 10 seconds of juggling in the current setup — 2 minutes, and it closes the last open question
 
-**The single most important thing on this list, and the cheapest.**
+**This is now the only thing standing between the gravity anomaly and a diagnosis.**
 
-Measured vertical acceleration in all three sample recordings is **9.55 m/s², about
-2.6% below 9.80665** — and it is *not* an analysis bug. Two independently recorded
-clips agree to within 0.06 percentage points, the best-determined flights show the
-largest deficit, per-flight formal σ is 0.004–0.009 m/s², and a free fit leaves a
-1.2 mm residual where fixing `g` leaves 4.2 mm. Ruled out with numbers
-(BUILD_LOG.md, Phase 2): volume-dependent distortion, air drag, a tilted Z axis, and
-the reader. Two causes remain and ball trajectories alone cannot separate them:
+Your 1 m calibration recording settled the scale question decisively. The two floor
+markers come out at **1000.22 mm ± 0.02 mm** against your tape's 1000 mm — an error of
+**+0.022%**, where the scale hypothesis needed **−2.87%** (971.3 mm). So the current
+rig's length scale is right, and separately the two clocks inside each `.qtm` agree to
+3.3e-07, which argues against a sample-rate error.
 
-1. the QTM calibration's **length scale** is about 2.9% small, or
-2. the capture **sample rate** is really ~295.7 Hz, not the 300 Hz the file reports
-   (`g_fit = g·(f_true/f_s)²`).
+But the calibration recording is from **2026-07-25** and the juggling clips are from
+**2024-12-12**, with a demonstrably different marker layout in between. So it proves
+*today's* calibration is sound; it cannot prove December 2024's was. The remaining
+hypothesis is that the 2024 session had a bad calibration which has since been fixed —
+and one recording tests it:
 
-**Do NOT try to validate this against the old recordings' `base_N` markers.**
-An earlier draft of this file asked for exactly that and it does not work — recorded
-here so the dead end is not walked twice. The owner measured `base_2`↔`base_4` as
-**261 mm**; the recordings put that pair at **710.7 mm**, and 261 mm matches *none* of
-the five markers' ten pairwise distances:
+1. **Juggle a `3` cascade for 10 seconds** in the setup exactly as it stands now.
+2. Send the `.qtm`. Nothing else needs to change; leave the robots and the floor
+   markers where they are, so the same file re-confirms the scale.
 
-    116.5   298.8   314.9   432.2   435.8   443.0   526.6   550.9   600.5   710.7  mm
+Then:
 
-Because it matches none of them, this cannot be a labelling mismatch — no permutation
-of names produces 261 mm. The two point sets are simply different configurations. The
-recordings are dated **2024-12-12, 16:14:59 and 16:25:26** (same session, 10.4 minutes
-apart), so the most likely explanation is that the markers were moved or re-laid in the
-months since. There is nothing to reconcile.
+- **`g` comes out ≈ 9.807** → the 2024 clips were taken under a bad calibration, since
+  corrected. Those two clips can be salvaged with a single 1/0.9713 scale factor, or
+  simply retired in favour of new recordings, and **every future recording is
+  trustworthy**. This is the outcome I expect.
+- **`g` still comes out ≈ 9.55** with the scale verified to 0.022% and the clocks to
+  3.3e-07 → something is wrong that none of my hypotheses covers, and it is worth real
+  investigation. Note that my `g` fitting is not in doubt: on synthetic data that obeys
+  `g` exactly it returns **9.80148 m/s², −0.053%**, over 76 flights.
 
-For reference, the five tracked marker positions (metres, QTM frame, reproducible to
-0.1 mm across both recordings). Note that QTM defines **six** markers, `base_0`
-through `base_5`, and **`base_0` was never tracked** — it has zero samples in both
-files, which is itself a plausible source of an off-by-one in any manual numbering:
-
-| label | x | y | z |
-|---|---|---|---|
-| `base_0` | — | — | — (defined, never tracked) |
-| `base_1` | +0.2280 | −0.4043 | −0.6728 |
-| `base_2` | +0.5427 | −0.3978 | −0.6809 |
-| `base_3` | +0.1062 | +0.0139 | −0.6569 |
-| `base_4` | +0.0550 | +0.1187 | −0.6561 |
-| `base_5` | +0.5343 | −0.0991 | −0.6722 |
-
-If that arrangement *does* still exist somewhere, measuring all ten distances would
-settle it outright — matching a whole five-point configuration is immune to naming, and
-the best-fit scale between the two point clouds is exactly the number in question. But
-do not spend long on it.
-
-**What to do instead — one recording, 5 minutes, and it is strictly better.**
-Tape-measure a baseline and capture it, so the comparison is contemporaneous and needs
-no assumptions about what moved when:
-
-1. Put two markers as far apart as comfortably fits the volume — **1 m or more** is
-   ideal, because the 2.9% you are testing for is then 29 mm and unmistakable.
-2. Measure centre-to-centre with a tape, and write the number down.
-3. Record **10 seconds** with both markers stationary, and send the `.qtm`.
-
-**Combine it with item 2** — put the 3–5 static markers of that recording at
-tape-measured spacings and one 30-second capture delivers both the scale check and the
-σ calibration at once.
-
-**New evidence, and it shifts the odds toward scale.** Each `.qtm` carries two
-independent-looking time stamps in `Measurement/Info`: a wall-clock date-time and a
-floating-point session clock. Across the two recordings:
-
-    session-clock delta   626.757794 s
-    wall-clock delta      626.758000 s
-    disagreement          0.206 ms over 626.8 s   =  3.3e-07 relative
-
-A 1.45% sample-rate error — the timing hypothesis — would need those two clocks to
-disagree by **9.1 seconds** here. They agree to a fifth of a millisecond. That is
-strong *if* the session clock is derived from the camera time base rather than being
-the PC clock re-expressed, and the file does not say which. QTM's own metadata schema
-does name `TimeBaseFrequency` and `TimeBaseOffset` fields, but they are absent (zero)
-in these files. So: suggestive, not conclusive — treat it as **moderate evidence
-against timing, which makes the calibration length scale the leading hypothesis.**
-
-**Why it matters.** Every absolute length and every energy figure inherits this.
-Throw heights read 2.9% low under hypothesis 1; all times read 1.45% short under
-hypothesis 2; Phase 9's joules are wrong under either until it is resolved. Siteswap
-extraction is ordinal and unaffected.
-
-There is an independent corroboration already in the data: the 5-ball clip has
-exactly one frame where two balls come within one ball diameter — 73.8 mm against
-74 mm, i.e. 0.2 mm inside. Correcting for the measured 2.87% deficit puts that pair at
-76.0 mm, no violation. Two unrelated measurements pointing the same way.
-
-**Unblocks**: Phase 2's remaining criterion, and the credibility of Phase 9.
-
-**Also useful, same trip (5 min):** if the `base_N` markers sit on a manufactured
-object whose dimensions you know from CAD, those numbers beat a tape measure — send
-them and the comparison becomes exact.
+If you can spare a second clip, a **deliberate drop** in the same setup would let
+Phase 5's drop rule be built against known truth at the same time.
 
 ---
 
-## 2. Record a static-marker clip — 5 minutes of capture
+## 2. Calibrate σ from a static recording — **DONE**, and the answer was a surprise
 
-Place 3–5 markers on the floor and on a stand at juggling height and record
-**30 seconds with nothing moving**.
+Completed by the 1 m calibration recording, which caught 26 motionless markers over
+3000 frames. Recording this closed the item and **corrected a claim I had made**:
 
-**Why.** The pipeline uses QTM's per-sample *residual* as the position uncertainty σ,
-and Phase 2 measured that this **understates the true error by about 3×**: clean
-flights fit a parabola to ~1.2 mm while the reported σ is ~0.35 mm, and χ²/dof runs at
-15–35 where a correct σ gives ~1. A motionless marker's scatter *is* σ, directly.
+    true position noise of a stationary marker      0.028 mm   (75% of it white)
+    QTM's reported residual for the same samples    2.333 mm
 
-This is not cosmetic. It already caused a concrete failure: a **correct** link across
-the 5-ball clip's 417 ms gap scored χ² = 11.4 against a 3σ gate of 9, purely because
-σ was understated and χ² scales as σ⁻². The linker now multiplies by a hard-coded 3.0
-(`SIGMA_UNDERESTIMATE_FACTOR`) to compensate. One recording replaces that guess with a
-measurement.
+QTM's residual **overstates** the position error — here by 80× — and it is not a
+calibrated σ in either direction: it is a ray-intersection residual that tracks camera
+geometry, varying from 0.28 mm to 2.33 mm across your recordings while the true noise
+stays at 0.03–0.10 mm. My Phase 2 entry claimed the opposite ("understates by roughly
+3×"), reached by comparing the reported residual against a flight's *parabola fit
+residual* and blaming the difference on the sensor. That was wrong and is corrected in
+BUILD_LOG.
 
-**Unblocks**: honest error bars everywhere; the linker's χ² gate; Phase 4's remaining
-shortfall is partly this.
+The more interesting consequence: your ball paths deviate from a perfect parabola by
+**0.42–0.78 mm**, which is 15–25× the sensor noise. That residual is therefore **real
+physics** — drag, or spin with a slightly off-centre marker — not measurement error.
+Your capture system is far better than I had been assuming; it is the ballistic *model*
+that is the limiting approximation.
+
+Nothing further needed from you here. One code consequence is recorded for the next
+session: the linker's `SIGMA_UNDERESTIMATE_FACTOR` keeps its value but loses its stated
+justification, and probably double-counts against a measured residual it already uses.
 
 ---
 
@@ -301,8 +248,8 @@ fit's own parameter covariance is what the χ² needs.
 | Phase 4's 7-ball criterion on real data | No 7-ball recording exists. | Item 3.8. |
 | A real clean-stop case | No recording contains one. | Item 3.7. |
 | Verifying Airtime's gate | Windows cannot typecheck Airtime at all (item 5). | A Linux machine or Airtime's CI. |
-| Absolute energy figures | The 2.6% scale/timing ambiguity. | Item 1. |
-| Calibrated uncertainties | QTM's residual understates σ by ~3×. | Item 2. |
+| Absolute energy figures | Whether the 2024 clips carry a 2.9% scale error. The current rig is verified sound, so energy from *new* recordings is trustworthy. | Item 1 (10 s of juggling). |
+| Calibrated uncertainties | **Done** — measured at 0.028 mm from the static recording; QTM's residual turned out to *overstate* it. | — |
 
 Deliberately **not** done, per the protocol: no GitHub release, no tag, no repository
 settings changed, nothing merged into Airtime's `main`, nothing in `data/` deleted or

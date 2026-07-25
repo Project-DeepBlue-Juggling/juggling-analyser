@@ -16,9 +16,10 @@ from juggling_analyser import load
 from juggling_analyser.core.clean import classify_session
 from juggling_analyser.io.qtm import read_qtm, scan_qtm
 
-from .conftest import QTM_SAMPLES
+from .conftest import CALIBRATION_QTM, JUGGLING_QTM_SAMPLES, QTM_SAMPLES, sample
 
 SAMPLES = QTM_SAMPLES
+JUGGLING = JUGGLING_QTM_SAMPLES
 
 pytestmark = pytest.mark.skipif(not SAMPLES, reason="no sample .qtm files in the corpus")
 
@@ -87,8 +88,9 @@ def test_positions_are_metres_within_a_capture_volume(path: Path) -> None:
         assert np.all(np.abs(trajectory.positions) < 10.0)
 
 
-@pytest.mark.parametrize("path", SAMPLES, ids=lambda p: p.name)
+@pytest.mark.parametrize("path", JUGGLING, ids=lambda p: p.name)
 def test_classification_finds_ball_trajectories(path: Path) -> None:
+    """Only over recordings that contain juggling — see the calibration test below."""
     session, report = classify_session(read_qtm(path))
     assert report.ball >= 3, f"expected at least 3 ball trajectories, got {report}"
     assert report.ball + report.spurious + report.unknown == session.n_trajectories
@@ -117,9 +119,27 @@ def test_include_unexported_is_a_superset(path: Path) -> None:
 
 
 def test_load_helper_classifies() -> None:
-    session = load(str(SAMPLES[0]))
+    session = load(str(JUGGLING[0]))
     assert any(t.kind == "ball" for t in session.trajectories)
     assert all(t.kind != "unknown" or t.n_samples >= 15 for t in session.trajectories)
+
+
+def test_a_scene_with_no_juggling_yields_no_balls() -> None:
+    """The negative case, and it is a real one.
+
+    `2026-06-10-1m_markers_calibration.qtm` is 10 s of robots and floor markers with
+    nothing thrown. Every trajectory is motionless, so `core.clean` must classify all
+    of them as spurious and `core.flight` must find no flight. A classifier that
+    hallucinated a ball here would be free to hallucinate one anywhere.
+    """
+    from juggling_analyser.core.flight import segment_session
+
+    session, report = classify_session(read_qtm(sample(CALIBRATION_QTM)))
+    assert session.n_trajectories == 26
+    assert report.ball == 0, f"a static scene produced {report.ball} ball trajectories"
+    assert report.unknown == 0
+    assert report.spurious == 26
+    assert segment_session(session, calibrate=False).flights == ()
 
 
 def test_reader_rejects_a_file_that_is_not_a_qtm_measurement(tmp_path: Path) -> None:

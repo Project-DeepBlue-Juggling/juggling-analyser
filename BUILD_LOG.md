@@ -816,3 +816,96 @@ both are absent from these files. Recorded as **moderate evidence against timing
 making the calibration length scale the leading explanation of the −2.6% gravity
 deficit.** No timecode stream exists in the files, so there is no further route to
 pin the sample rate from the data alone.
+
+---
+
+## Calibration recording — scale is CORRECT, and a Phase 2 claim is corrected (2026-07-25)
+
+The owner recorded `data/2026-06-10-1m_markers_calibration.qtm` — 3000 frames at
+300 Hz, robots left in the scene, two markers laid on the floor a tape-measured
+**1000 mm** apart. It settles one question and overturns one of my own conclusions.
+
+### 1. The length scale is right. The scale hypothesis is dead.
+
+The two floor markers are the only ~1 m pair at floor height (series 25 and 27, both
+at z ≈ −70 mm; the other near-metre pair, 26–30 at z ≈ 1.9–2.3 m, is on a robot):
+
+    MEASURED   1000.22 mm   sd 0.016 mm over 3000 frames
+    TAPE       1000    mm
+    error      +0.22 mm  =  +0.022%
+
+The −2.87% scale hypothesis predicted **971.3 mm**. It is excluded by two orders of
+magnitude. This also validates the reader end to end: it recovers a known metre to
+0.2 mm.
+
+**Caveat that matters.** This recording is from 2026-07-25; the juggling clips are from
+2024-12-12, and the setup demonstrably changed in between (different `base` marker
+layout, and the owner's earlier 261 mm measurement matched none of the old distances).
+So this proves the *current* calibration is metrically sound. It does **not** prove the
+December 2024 one was. Combined with the session-clock evidence against a timing error,
+the most economical explanation of the 2024 clips' −2.6% gravity is **a bad calibration
+in December 2024 that has since been fixed** — but that is now a hypothesis about a
+past state of the rig, and only one measurement can close it: **10 seconds of juggling
+in the current setup.** That is the top item in `OWNER_ACTIONS.md`.
+
+### 2. Correction: QTM's residual does not understate the position error. It grossly overstates it.
+
+The Phase 2 entry states that QTM's per-sample residual "understates the true position
+error by roughly 3×". **That was wrong**, and this recording — 26 motionless markers ×
+3000 frames — shows it directly. Measuring the true σ as the scatter of a stationary
+marker about its own mean:
+
+| recording | markers | true σ (median) | reported σ (median) | true / reported |
+|---|---|---|---|---|
+| `3_ball_juggling_cut` statics | 5 | 0.102 mm | 0.279 mm | **0.36** |
+| `5_ball_juggling_cut` statics | 5 | 0.034 mm | 0.294 mm | **0.12** |
+| `2026-…-1m_markers` statics | 26 | 0.028 mm | 2.333 mm | **0.012** |
+
+QTM's residual is a **ray-intersection residual**, and its magnitude tracks camera
+geometry, not position error: it varies by 80× across these recordings while the true
+noise stays at 0.03–0.10 mm. It is not a calibrated σ in *either* direction.
+
+Where the original error crept in: Phase 2 compared the reported σ against the
+*parabola fit residual* of a flight and attributed the whole difference to sensor
+noise. Re-measured properly, that ratio is not even consistent — the flight free-gravity
+residual over the reported σ is **0.75** on the 3-ball clip and **1.77** on the 5-ball,
+not 3 in both.
+
+### 3. What the numbers actually mean — a better model of the error
+
+Three separate quantities, now each measured rather than conflated:
+
+- **Sensor noise ≈ 0.03 mm**, of which **75% is white** (from successive differences:
+  white component 0.020 mm against a total of 0.028 mm). The system is superb.
+- **Ball paths deviate from a perfect parabola by 0.42–0.78 mm** — 15–25× the sensor
+  noise. So the flight residual is dominated by **real deviation of the ball's path from
+  the ballistic model** (drag, spin with an off-centre marker, whatever it is), not by
+  measurement error. This is a much more interesting statement than "the data is noisy",
+  and it is consistent with the gravity anomaly being systematic rather than noise.
+- **QTM's reported residual, 0.28–2.33 mm**, is uninformative about both.
+
+This also reconciles with the Phase 3 finding: the degradation model's author measured
+the genuinely white part of the flight error at 0.035 mm, which agrees with the 0.020–
+0.028 mm measured here on static markers. Their "smooth remainder" is not sensor drift —
+it is the real path deviation above.
+
+### 4. Consequences for the code
+
+- `SIGMA_UNDERESTIMATE_FACTOR = 3.0` (used by the linker to inflate σ so its χ² gate
+  admits correct links) **keeps its value but loses its stated justification.** It is
+  not true that the sensor is 3× noisier than reported. What *is* true is that the
+  quantity the linker's χ² needs — how far a ball's real path departs from a ballistic
+  prediction — is larger than the reported residual, by a factor that measured 0.75–1.77
+  on flight residuals and more once extrapolation over a gap is included. So the
+  inflation is defensible as an **effective** model-error term, and the comment in
+  `params.py` now says that instead of the wrong thing. The value itself was chosen
+  because it made a *known-correct* link pass the gate, which is weak evidence; it should
+  be replaced by a properly propagated prediction covariance (already the recommended
+  fix in the Phase 4 entry).
+- **Possible double-counting**: `_endpoint_states` already uses `flight.free_residual`
+  as the position σ for flight-derived endpoints — a *measured* path-deviation figure —
+  and then multiplies it by `sigma_factor` as well. Recorded as an open item; changing
+  it moves the P4 numbers, so it is not being done blind at the end of a run.
+- **`OWNER_ACTIONS.md` item 2 is complete.** The static-marker recording asked for has
+  been made and the answer is above: true σ = 0.028 mm, 75% white. The item is closed
+  rather than left asking for something already delivered.

@@ -44,3 +44,17 @@ BALLS_ONLY_TSV = "5_ball_juggling_cut_balls_only.tsv"
 
 #: The headline acceptance recording (DESIGN.md §12 layer 3).
 THREE_BALL_QTM = "3_ball_juggling_cut.qtm"
+
+#: A static scene: robots and two floor markers a tape-measured 1000 mm apart, with
+#: **no juggling at all**. It is both a physical scale oracle and the negative case
+#: for classification — a recording containing no ball must yield no ball.
+CALIBRATION_QTM = "2026-06-10-1m_markers_calibration.qtm"
+
+#: Distance between the two floor markers, and the tape's own precision. Ground
+#: truth from outside the software entirely, which is what makes it worth testing.
+CALIBRATION_KNOWN_DISTANCE = 1.000
+CALIBRATION_TAPE_TOLERANCE = 0.005
+
+#: Recordings that actually contain juggling. Tests about balls, flights and catches
+#: belong here rather than over every `.qtm` in the corpus.
+JUGGLING_QTM_SAMPLES = [p for p in QTM_SAMPLES if "calibration" not in p.name]

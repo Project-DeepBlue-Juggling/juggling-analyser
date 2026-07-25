@@ -114,19 +114,26 @@ MAX_BRIDGED_GAP = 0.250
 #: which "the same ball" is not an inference any evidence here supports.
 MAX_LINK_GAP = 0.600
 
-#: How much the *reported* per-sample uncertainty understates the true one.
+#: Effective inflation of the reported per-sample uncertainty, for link scoring.
 #:
-#: Measured, not assumed. Phase 2 found that a clean flight's free-gravity parabola
-#: residual is ~1.2 mm where QTM's reported residual is ~0.35 mm, and that chi²/dof
-#: over those fits runs at 15-35 rather than ~1 — both say the reported sigma is
-#: optimistic by roughly a factor of 3.
+#: **Not** "the sensor is 3x noisier than reported" — an earlier version of this comment
+#: said that and it is wrong. Measured on a 26-marker static recording, the true
+#: position noise of a motionless marker is 0.028 mm while QTM reports 2.333 mm for the
+#: same samples: the reported residual is a ray-intersection residual that tracks camera
+#: geometry, and it *overstates* position error by up to 80x. It is not a calibrated
+#: sigma in either direction (BUILD_LOG, "Calibration recording").
 #:
-#: It matters here because the link cost is a chi-squared: understating sigma by 3x
-#: overstates chi-squared by 9x, and a *correct* link across the 5-ball clip's
-#: 417 ms gap scored 11.4 against a gate of 9 for exactly that reason. Inflating by
-#: the measured factor is the difference between rejecting a real link and accepting
-#: it. A static-marker recording would replace this estimate with a direct
-#: measurement (OWNER_ACTIONS.md).
+#: What this factor is really for: the linker's cost is a chi-squared on how far a ball's
+#: real path lands from a ballistic prediction, and that distance is dominated by genuine
+#: departure from the ballistic model — measured at 0.42-0.78 mm of parabola residual
+#: against 0.03 mm of sensor noise — not by the reported residual. So this is an
+#: **effective model-error** term, and 3.0 is a weakly-founded value: it was chosen
+#: because it lets a known-correct link across the 5-ball clip's 417 ms gap pass a 3-sigma
+#: gate that it otherwise fails at chi-squared 11.4. Replace it with a properly propagated
+#: prediction covariance from the flight fit (see BUILD_LOG Phase 4).
+#:
+#: Note a probable double-count: `_endpoint_states` already uses `flight.free_residual`,
+#: itself a measured path-deviation figure, and then applies this on top.
 SIGMA_UNDERESTIMATE_FACTOR = 3.0
 
 #: Chi-squared above which a candidate link is rejected outright.
