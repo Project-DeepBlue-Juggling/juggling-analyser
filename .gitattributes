@@ -1,0 +1,9 @@
+# Source is normalised to LF in the repository.
+* text=auto eol=lf
+
+# The corpus is a validation oracle: it must survive a round trip byte for byte,
+# so git performs no line-ending or diff processing on it.
+data/** binary
+*.qtm binary
+*.tsv binary
+*.rrd binary

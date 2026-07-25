@@ -1,0 +1,121 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "juggling-analyser"
+version = "0.1.0.dev0"
+description = "Analyse ball-juggling sessions from Qualisys motion-capture recordings."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Harrison Low" }]
+keywords = ["juggling", "siteswap", "motion-capture", "qualisys", "qtm", "biomechanics"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "olefile>=0.46",
+    "python-lzo>=1.14",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+    "hypothesis>=6",
+    "ruff>=0.16",
+    "mypy>=1.10",
+]
+
+# No [project.scripts]: this machine cannot write .exe shims into the global
+# Scripts directory (CLAUDE.md rule 5). Everything is reachable through
+# `python -m juggling_analyser ...`.
+
+[project.urls]
+Homepage = "https://github.com/Project-DeepBlue-Juggling/juggling-analyser"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/juggling_analyser"]
+
+# --------------------------------------------------------------------------- #
+# ruff — lint + format
+# --------------------------------------------------------------------------- #
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "tools"]
+extend-exclude = ["src/juggling_analyser/viewer/app"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # bugbear
+    "C4",     # comprehensions
+    "SIM",    # simplify
+    "RUF",    # ruff-specific
+    "NPY",    # numpy-specific (NPY002 bans the legacy global RNG)
+    "TID",    # tidy imports (TID251 powers the core-purity bans)
+    "PTH",    # prefer pathlib over os.path
+    "ARG",    # unused arguments
+    "RET",    # return simplifications
+    "PL",     # pylint subset
+    "DTZ",    # naive datetime use
+]
+ignore = [
+    "PLR0913",  # too many arguments — analysis functions legitimately take many
+    "PLR2004",  # magic value comparison — physics constants read fine inline
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "PLC0415"]
+"tools/**" = ["PLC0415"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["juggling_analyser"]
+
+# --------------------------------------------------------------------------- #
+# mypy — strict everywhere; core/ additionally checked by the purity test
+# --------------------------------------------------------------------------- #
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests", "tools"]
+exclude = ['^src/juggling_analyser/viewer/app/']
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+
+[[tool.mypy.overrides]]
+module = ["olefile", "lzo"]
+ignore_missing_imports = true
+
+# --------------------------------------------------------------------------- #
+# pytest
+# --------------------------------------------------------------------------- #
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers --strict-config"
+filterwarnings = ["error"]
+markers = [
+    "slow: takes more than a couple of seconds",
+]
+
+[tool.coverage.run]
+source = ["src/juggling_analyser"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]

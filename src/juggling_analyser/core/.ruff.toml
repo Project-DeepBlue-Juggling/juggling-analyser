@@ -1,0 +1,43 @@
+# Core purity, enforced by lint (CLAUDE.md rule 1, DESIGN.md §2).
+#
+# `core/` is a pure, deterministic, I/O-free function of its arguments. That is
+# what makes an analysis reproducible, diffable between algorithm changes, and
+# testable against synthetic truth without touching a file.
+#
+# This file is the *lint* half of the enforcement; `tests/test_core_purity.py`
+# walks the AST of `core/**` independently, so the rule survives even if this
+# config drifts or a rule is renamed upstream. Do not weaken either half.
+extend = "../../../pyproject.toml"
+
+[lint.flake8-tidy-imports]
+# `from ..io import ...` / `from ..viewer import ...` — core never depends
+# outward. Sibling imports inside core (`from .trajectory import ...`) stay legal.
+ban-relative-imports = "parents"
+
+[lint.flake8-tidy-imports.banned-api]
+# Dependency direction is strictly cli / viewer / io -> core, never the reverse.
+"juggling_analyser.io".msg = "core/ never depends outward (DESIGN.md §2)."
+"juggling_analyser.viewer".msg = "core/ never depends outward (DESIGN.md §2)."
+"juggling_analyser.cli".msg = "core/ never depends outward (DESIGN.md §2)."
+"time".msg = "core/ never reads the wall clock (CLAUDE.md rule 1)."
+"datetime".msg = "core/ never reads the wall clock (CLAUDE.md rule 1)."
+"random".msg = "core/ takes an explicit np.random.Generator argument instead."
+"numpy.random.seed".msg = "Seed a np.random.Generator and pass it in explicitly."
+"numpy.random.default_rng".msg = "core/ receives a Generator; it never creates one."
+"os".msg = "core/ performs no I/O — put it in io/ or cli."
+"sys".msg = "core/ performs no I/O — put it in io/ or cli."
+"io".msg = "core/ performs no I/O — put it in io/ or cli."
+"pathlib".msg = "core/ performs no I/O — put it in io/ or cli."
+"json".msg = "Serialisation lives in io/session.py."
+"csv".msg = "Serialisation lives in io/."
+"pickle".msg = "Serialisation lives in io/."
+"socket".msg = "core/ performs no I/O."
+"subprocess".msg = "core/ performs no I/O."
+"urllib".msg = "core/ performs no I/O."
+"http".msg = "core/ performs no I/O."
+"requests".msg = "core/ performs no I/O."
+"logging".msg = "core/ performs no I/O; return diagnostics as data instead."
+"argparse".msg = "Argument parsing lives in cli.py."
+"matplotlib".msg = "core/ does no plotting; the viewer renders."
+"plotly".msg = "core/ does no plotting; the viewer renders."
+"webbrowser".msg = "core/ performs no I/O."
