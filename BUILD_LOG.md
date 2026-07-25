@@ -273,3 +273,151 @@ frame is missing — and QTM still calls it Mixed. `Trajectory.is_contiguous` an
   time that file is touched.
 - No coverage threshold yet — still waiting on the modules DESIGN.md §14 names.
 
+---
+
+## Phase 2 — Flight segmentation and the juggling frame    PARTIAL (2026-07-25)
+
+**Three of four acceptance criteria pass. The fourth fails, and the failure is a
+property of the recordings, not of the code.**
+
+| Criterion (PLAN.md P2) | Result |
+|---|---|
+| gate green | **PASS** — ruff clean, mypy strict clean (23 files), 245 tests |
+| every detected flight's parabola residual below tolerance | **PASS** — 0 of 62 (3-ball) and 0 of 87 (5-ball) exceed the 5 mm tolerance; worst free-gravity residual 3.36 mm and 4.05 mm, medians 0.42 and 0.78 mm |
+| fitted `g` within 2% of 9.80665 | **FAIL** — **−2.59%** (3-ball, 27 flights) and **−2.65%** (5-ball, 52 flights) |
+| derived hand axis within 15° of nominal | **PASS** — **0.59°** and **1.56°** |
+| frame round-trip identity to 1e-12 | **PASS** — worst 5.55e-16 m |
+
+### The gravity finding — read this before Phase 9
+
+Measured vertical acceleration in this corpus is **9.55 m/s², about 2.6% below
+9.80665**. The evidence that this is the instrument and not the analysis:
+
+- **Two independently recorded clips agree**: −2.59% and −2.65%. An earlier
+  trimmed-interval analysis of all three files gave −2.88%, −2.87%, −2.87%,
+  agreeing to 0.01 percentage points.
+- **The best-determined flights show the largest deficit.** Binned by throw size,
+  the longest and highest arcs (apex 0.57–0.72 m, 200+ samples) read −2.96%; short
+  ones read −2.2% to −2.6%. If this were fit noise the relationship would run the
+  other way.
+- **Per-flight formal σ_g is 0.004–0.009 m/s²**, so the flight-to-flight spread of
+  0.165 is real physical variation and the median is pinned to ~0.2%.
+- **Fitting freely leaves a 1.2 mm residual where fixing `g = 9.80665` leaves
+  4.2 mm.** The data is an excellent parabola — just not that one.
+- **It is not the volume.** Correlation of fitted `g` with mean x, y, z, apex
+  height and speed is weak (|r| ≤ 0.46) and *every* bin sits between −1.7% and
+  −3.0%; no bin approaches 9.807.
+- **It is not air drag.** Measured horizontal acceleration is 0.3–0.4 m/s² at
+  horizontal speeds of ~0.5 m/s; quadratic drag on a 74 mm, 71 g ball at that
+  speed is 0.004 m/s², two orders of magnitude too small.
+- **It is not a tilted Z axis.** A tilt large enough to cost 2.6% of `g` (13°)
+  would put 2.2 m/s² of gravity into the horizontal axes; the measurement implies
+  a tilt of ~2.4°, worth 0.1%.
+- **It is not the reader.** Ingestion reproduces a QTM TSV export to 5e-07 m (P1).
+
+Two hypotheses remain, and ball trajectories alone cannot separate them:
+
+1. a **length-scale** error of about −2.87% in the QTM calibration, or
+2. a **timing** error — the true rate being 295.7 Hz rather than the 300 Hz the
+   file reports, since `g_fit = g·(f_true/f_s)²`.
+
+**One measurement settles it**, and it is in `OWNER_ACTIONS.md`: tape-measure two
+of the static `base_N` markers. This reader measures `base_1`↔`base_2` as
+**0.3149 m** and `base_3`↔`base_4` as **0.1165 m**, reproducible to 0.1 mm across
+both recordings. If the tape says ~0.3242 m and ~0.1200 m it is scale; if it agrees
+with 0.3149 m it is timing.
+
+Consequences, so nothing downstream is surprised: siteswap extraction (P6) is
+ordinal and immune; `t_air`, `t_d` and `τ_b` are correct under hypothesis 1 and
+1.45% short under hypothesis 2; `z_apex` is 2.9% low under hypothesis 1;
+**energy (P9) is affected either way** and its numbers must carry this caveat.
+
+### Delivered
+
+- **`core/flight.py`.** Savitzky–Golay derivatives (polyorder 2, exact for
+  ballistic motion); uncertainty-widened ballistic test; mask closing; parabola
+  boundary refinement; sub-sample apex from the fitted parabola; per-flight fixed-
+  *and* free-gravity fits; `Flight`, `Carry`, `GravityCheck`, `FlightSegmentation`.
+- **`core/frame.py`** (subagent-built, integrated). Derived origin and PCA hand
+  axis, sign from the nominal mapping, orthonormality and right-handedness
+  validated, plus `FrameDiagnostics` carrying the PCA eigenvalues and the axis's
+  angular σ so a badly determined frame reports itself instead of looking confident.
+- **`core/clean.py`**: `refine_with_flights`, the physics pass. On the 3-ball clip
+  it moves 23 balls / 29 spurious / 9 unknown to 19 / 33 / 9, correctly demoting
+  trajectories that look like balls but never fly like one.
+- `Session.frame_transform` added — DESIGN.md §3 lists it and it was missing — so
+  the transform is recorded rather than re-derived, and P7 can serialise it.
+- `info` now reports flights, the gravity check with its caveat, and the frame.
+- 148 new tests. Synthetic-truth tests measure *accuracy*; corpus tests pin the
+  measured numbers so an algorithm change has to acknowledge moving them.
+
+### Measured accuracy against synthetic truth
+
+- Throw and catch instants land within **3 samples (10 ms)** of truth every time,
+  and the flight *length* is recovered exactly (151 of 151 samples).
+- `z_apex` matches `g·t_air²/8` to **3 mm**.
+- Free-fit `g` on data that obeys `g` returns it to **0.05 m/s²**.
+- **Robustness envelope**: every flight found at σ up to **2 mm**, four times the
+  corpus's 0.2–0.5 mm. At 3 mm some are lost; at 5 mm none are found and none are
+  invented. Asserted at 2 mm so the envelope cannot silently shrink.
+
+### Decisions
+
+- **Two-pass gravity calibration, default on** (`segment_session`). A fixed-`g`
+  parabola on data with a `Δg` offset leaves a systematic `½·Δg·(t−t̄)²` — about
+  2 mm RMS here, five times the 0.4 mm measurement noise — so the fit residual,
+  which is supposed to be the event's *confidence*, would instead be a proxy for
+  the instrument error. Pass one measures `g` freely; pass two fits with it.
+  `GRAVITY` remains the reference and `gravity_check` always reports the measured
+  value against it, so the discrepancy is surfaced, never absorbed. This is a
+  deliberate deviation from DESIGN.md §6's single-pass description;
+  `calibrate=False` restores it.
+- **Two ballistic thresholds.** The design tolerance (`a_tol = 1.5`) decides
+  whether a flight *exists*; the σ-widened tolerance decides how far it *extends*.
+  With only the widened test, a noisy trajectory's σ can open the tolerance to
+  several m/s² and admit spans that are not free flight — that produced 11 false
+  flights on the 3-ball clip, one of them fitting `g = −0.58 m/s²`. Requiring half
+  a minimum-flight's worth of strictly-ballistic samples removed all 11 and
+  improved the derived hand axis from 3.96° to 0.59°.
+- **`is_suspect` tests two things, not one.** A low residual proves a path is
+  *smooth*, not that it is *falling*: a straight line fits a free quadratic
+  perfectly with `g ≈ 0`. So a flight is suspect if its free-gravity residual
+  exceeds 5 mm **or** its fitted `g` is more than 20% from the session's.
+- **The smoothing window adapts to the noise**, with DESIGN.md §13's 21 samples at
+  300 Hz as the floor. It widens only when the trajectory's median σ would push the
+  propagated acceleration noise above `a_tol/2`, and is capped at the minimum
+  flight length. This is what extends the robustness envelope to 2 mm; on the
+  corpus it returns 21 unchanged, so DESIGN's default is what actually runs.
+- Suspect flights and truncated flight ends are both excluded from the throw/catch
+  cloud the frame is derived from. One suspect segment had placed a "catch" 1.5 m
+  below the hands, which moved the origin and skewed the axis.
+- New parameters in `core/params.py`, each with its derivation in the comment:
+  `BALLISTIC_SIGMA_MULTIPLE = 3.0`, `BALLISTIC_CLOSE_SECONDS = 0.033`,
+  `BOUNDARY_TOLERANCE = 1.5 mm`, `MAX_FLIGHT_RESIDUAL = 5 mm`,
+  `MAX_GRAVITY_DEVIATION = 0.20`. **None of DESIGN.md §13's published defaults were
+  changed.**
+- `scipy-stubs` added to the dev extras: without it `mypy --strict` cannot check the
+  `scipy.signal` / `scipy.ndimage` call sites at all.
+
+### Deferred / open
+
+- **Boundary bias.** DESIGN.md §6 defines the throw as the flight's first *sample*.
+  The refinement admits two or three contaminated samples before that, so `t_air`
+  carries a systematic bias of order +10 ms (~2% of a 0.5 s flight), measured on
+  synthetic data. Solving for the sub-sample instant at which the path departs the
+  parabola would remove it, but that changes a DESIGN definition — flagged for the
+  owner rather than done unilaterally.
+- **QTM's residual understates the true position error by roughly 3×.** Clean
+  flights fit to ~1.2 mm where the reported σ is ~0.35 mm, and χ²/dof runs at 15–35
+  rather than 1. Uncertainty-weighted results are therefore over-confident in
+  absolute terms. A static-marker recording would calibrate σ directly.
+- The `apex_height` vs `v_z²/2g` cross-check in DESIGN.md §9 is **not independent**:
+  with `g` fixed the two are algebraically the same quantity, and the test that
+  asserts it only guards the sign and factor. The genuinely independent check is the
+  free-gravity fit, which is what is reported. A second real check — fitted apex
+  against the maximum *observed* z — agrees to 1.4 mm (median) and is available but
+  not yet asserted.
+- `Carry` is per-trajectory, not per-ball; a true carry needs identity (P4/P5).
+- The 3-ball `t_air` distribution has a p10 of 0.13 s, short for a 3-ball cascade
+  and probably marking flights split by tracking loss. P4's linking should merge
+  them; worth re-checking then.

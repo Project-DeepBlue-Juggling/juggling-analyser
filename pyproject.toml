@@ -32,6 +32,9 @@ dev = [
     "hypothesis>=6",
     "ruff>=0.16",
     "mypy>=1.10",
+    # core/flight.py imports scipy.signal and scipy.ndimage; without these stubs
+    # mypy --strict cannot check either call site.
+    "scipy-stubs>=1.16",
 ]
 
 # No [project.scripts]: this machine cannot write .exe shims into the global

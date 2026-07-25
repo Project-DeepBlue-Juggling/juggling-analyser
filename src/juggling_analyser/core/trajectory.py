@@ -22,9 +22,12 @@ frame after ``core.frame`` has been applied (DESIGN.md §5). Which one a
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle broken for typing only
+    from .frame import FrameTransform
 
 Form = Literal["isotropic", "diagonal", "full"]
 Kind = Literal["ball", "spurious", "unknown"]
@@ -312,6 +315,10 @@ class Session:
     trajectories: tuple[Trajectory, ...] = ()
     #: Which frame ``trajectories`` positions are currently expressed in (§5).
     frame: Frame = "qtm"
+    #: The derived QTM → juggling transform, once ``core.frame`` has run. Recorded
+    #: on the session rather than re-derived, so any result can be mapped back to
+    #: raw QTM coordinates (DESIGN.md §3, §5) and written to the session JSON (§10).
+    frame_transform: FrameTransform | None = None
     #: Source series that decoded but were not exported as marker trajectories,
     #: kept as a count so `info` can report what was skipped rather than hiding it.
     skipped_series: tuple[str, ...] = field(default_factory=tuple)

@@ -10,10 +10,14 @@ There is no console-script shim: everything runs as
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from collections.abc import Callable
 
-from juggling_analyser.core.clean import classify_session
+from juggling_analyser.core.clean import classify_session, refine_with_flights
+from juggling_analyser.core.flight import event_positions, segment_session
+from juggling_analyser.core.frame import derive_frame
+from juggling_analyser.core.params import GRAVITY
 from juggling_analyser.core.trajectory import Trajectory
 from juggling_analyser.io.qtm import read_qtm, scan_qtm
 
@@ -70,6 +74,46 @@ def _cmd_info(args: argparse.Namespace) -> int:
 
     active = session.active_at(1)
     print(f"\n{len(session.balls)} ball trajectorie(s); {len(active)} active at frame 1.")
+
+    segmentation = segment_session(session)
+    session, report = refine_with_flights(session, segmentation.flights)
+    suspect = sum(1 for f in segmentation.flights if f.is_suspect())
+    complete = len(segmentation.complete_flights)
+    print(
+        f"\nflights: {len(segmentation.flights)} ({complete} with a throw and a catch at "
+        f"both ends, {suspect} suspect); after the physics pass: {report}"
+    )
+    check = segmentation.gravity_check
+    if check is not None:
+        print(
+            f"  measured g over {check.n_flights} long flights: {check.median:.4f} m/s^2, "
+            f"{check.relative_error * 100:+.2f}% vs {GRAVITY} "
+            f"(spread {check.spread:.3f}); fits used {segmentation.gravity_used:.4f}"
+        )
+        if check.within > 0.02:
+            print(
+                "  NOTE: that is outside 2%. It is consistent across recordings, so it "
+                "reads as a capture-scale or sample-rate offset, not an analysis error "
+                "— see OWNER_ACTIONS.md."
+            )
+
+    cloud = event_positions(segmentation.flights)
+    if len(cloud) >= 2:
+        transform = derive_frame(cloud)
+        diagnostics = transform.diagnostics
+        quality = (
+            f", anisotropy {diagnostics.anisotropy:.1f}, axis "
+            f"+/-{math.degrees(diagnostics.axis_angle_sigma):.2f} deg"
+            if diagnostics is not None
+            else ""
+        )
+        print(
+            f"  juggling frame from {len(cloud)} throw/catch positions: hand axis "
+            f"{math.degrees(transform.angle_to_nominal_hand_axis()):.2f} deg from nominal"
+            f"{quality}"
+        )
+        print(f"  origin (QTM frame): {transform.origin.round(4).tolist()}")
+
     print("Ball identity across gaps is recovered by the linker (PLAN.md P4), not by the reader.")
     return 0
 
