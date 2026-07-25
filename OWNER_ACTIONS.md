@@ -13,47 +13,55 @@ pushed, CI green, gate green at every commit. Honest summary at the end.
 
 ---
 
-## 1. Measure a 1 m baseline **vertically** — 2 minutes, and it finishes the diagnosis
+## 1. Swing a pendulum — 5 minutes, and it is the last hypothesis standing
 
-Your juggling recording, with the 1 m floor markers still in it, has identified the
-fault. One file, one calibration, ten seconds, two measurements:
+Your vertical baseline refuted my hypothesis, which is exactly what it was for. Both
+axes are now verified against physical ground truth:
 
-    horizontal scale, from your 1 m baseline    +0.056%   (1000.56 mm, sd 0.028 mm)
-    vertical scale, implied by fitted g         -5.11%    (g = 9.2757 m/s²)
+    horizontal scale   +0.056%   (1000.56 mm across a 99.5%-horizontal baseline)
+    vertical   scale   -0.328%   (996.72 mm across a 99.998%-vertical plumb line)
 
-That looks like a contradiction and is not. Your two markers' separation vector is
-`(−0.996, +0.095, −0.010)` m — **99.5% horizontal, with only 10 mm of vertical
-component.** So it pins the horizontal scale and says essentially nothing about the
-vertical one, and `g` depends on **nothing but the vertical scale**. My previous
-conclusion that "the scale hypothesis is dead" was too quick: the *isotropic* scale
-hypothesis is dead. A **vertical-only** scale error fits every observation, and it is
-the only hypothesis that does.
+The vertical-scale hypothesis predicted 948.9 mm and the measurement is 996.7 mm, inside
+your few-mm tape precision. So the scale is right in both directions. (Your droppy marker
+came through as **957 separate pieces** and the reader stitched it without trouble — the
+plumb line is 99.998% vertical with only 6.2 mm of horizontal offset. It was a good
+measurement.)
 
-**The test:** put the two markers **one directly above the other**, a tape-measured
-1 m apart — hang one from something, or stand a pole up — and record 10 s.
+I also confirmed the fault is not in my own code: on the five longest flights,
+`core.flight`, a plain `numpy.polyfit`, and raw second differences all return the same
+`g ≈ 9.2–9.4`. And a marker mounted off-centre on a spinning ball is excluded — that
+would leave 5–15 mm of x/y residual against a linear fit, and the measurement is
+0.4–2.0 mm.
 
-- **Reads ≈ 949 mm** → confirmed: your vertical axis is compressed ~5%. That is a
-  calibration problem with a known cause and a known fix (below), and every past
-  recording can be corrected by measuring its own factor.
-- **Reads ≈ 1000 mm** → the vertical scale is fine and I am wrong again; at that point
-  the anomaly has survived every hypothesis I can construct and deserves a fresh pair
-  of eyes.
+With the scale pinned, the arithmetic leaves one term: `g_fit = g · s_z / k²` with
+`k = f_true/f_s`. That gives **`f_true ≈ 308 Hz` while the file reports 300.**
 
-**If it confirms, the likely cause is the calibration itself.** A wand sweep performed
-mostly in the horizontal plane, or camera geometry with little vertical parallax,
-constrains Z far more weakly than X and Y. When you next calibrate, make a point of
-sweeping the wand through the **full vertical extent** of the volume — floor to above
-head height — not just across it. Note the fault is not constant: it was −2.6% in
-December 2024 and is −5.1% now, so it is being re-fitted badly each time and cannot be
-compensated with a fixed constant. It has to be measured per session, which is a good
-argument for making a vertical baseline part of your normal setup routine.
+**The test — a pendulum.** Tie a marker to a string, measure the string length `L` to the
+marker centre, hang it, and swing it gently (small amplitude, under ~15°) for 10 s.
 
-**Everything else has been eliminated, each with numbers:** isotropic scale (your
-horizontal metre), timing (the two clocks inside each `.qtm` agree to 3.3e-07, and it
-would need 304–308 Hz varying between sessions), sensor noise (0.028 mm), air drag (two
-orders of magnitude too small), a tilted Z axis (would need 13°; the data implies 2.4°),
-gap-filling (63 samples in the whole file), and the reader (pinned to a TSV export at
-5e-07 m and to your physical metre at 0.2 mm).
+Then `g = 4π²L/T²`, where `L` is a distance — now verified — and `T` is a period measured
+from the frame count. It measures `g` through the *same scale and the same clock* as the
+juggling, but with no ballistic assumption whatsoever. 20 swings in 10 s gives `T` to a
+fraction of a percent.
+
+- **Returns ≈ 9.807** → the clock is fine, the scale is fine, and the ballistic anomaly
+  is something about the flights themselves that I have not yet found. That would be a
+  genuine puzzle and I would want to look again from scratch.
+- **Returns ≈ 9.28** → the capture clock is confirmed running fast, and every time-derived
+  quantity in the project needs the measured rate rather than the reported one.
+
+**A cruder cross-check, if the pendulum is awkward (1 minute):** set QTM to capture 60 s
+and time it with a phone stopwatch. At a true 308 Hz a nominal 60 s capture finishes in
+**58.5 s** — a 1.5 s discrepancy, comfortably above reaction time.
+
+**Do you need to send juggling with the vertical markers?** No. The scale question is
+closed. What is still wanted is item 1b below — a juggling recording whose volume reaches
+hand height — and it does not need the calibration markers in it.
+
+Note for context: QTM's own bookkeeping is self-consistent at 300 Hz (a 10 s capture
+setting, 3000 frames, and a TSV export whose Time column equals `(frame−1)/300` to
+3e-06 s). So if the rate is wrong, it is wrong upstream of QTM's own arithmetic, which is
+why an external timing reference is the only way to see it.
 
 ---
 

@@ -25,6 +25,7 @@ from .conftest import (
     CALIBRATION_KNOWN_DISTANCE,
     CALIBRATION_QTM,
     CALIBRATION_TAPE_TOLERANCE,
+    VERTICAL_CALIBRATION_QTM,
     sample,
 )
 
@@ -220,3 +221,43 @@ def test_reader_reproduces_a_tape_measured_horizontal_metre() -> None:
 
     # And the hypothesis it excludes, stated so the exclusion cannot be lost.
     assert abs(distance - CALIBRATION_KNOWN_DISTANCE * (1 - 0.0287)) > 0.02
+
+
+def test_reader_reproduces_a_tape_measured_vertical_metre() -> None:
+    """The vertical companion to the horizontal oracle above — and it refuted a hypothesis.
+
+    Two markers hung as a plumb line a tape-measured 1000 mm apart. Because `g` depends
+    on nothing but the vertical scale, and because the horizontal oracle cannot speak for
+    Z, this is the measurement that decides whether the corpus's gravity deficit is a
+    vertical scale error. It is not: the baseline reads 996.72 mm, where a vertical scale
+    error large enough to explain `g = 9.2757` would have put it at 948.9 mm.
+
+    Both assertions matter. The first says the vertical scale is right; the second says
+    the refutation cannot be quietly lost (BUILD_LOG, "Vertical scale is CORRECT too").
+    """
+    session = read_qtm(sample(VERTICAL_CALIBRATION_QTM), include_unexported=True)
+    means = {t.id: t.positions.mean(axis=0) for t in session.trajectories}
+    plumb = [
+        (a, b)
+        for a in means
+        for b in means
+        if a < b
+        and abs(np.linalg.norm(means[a] - means[b]) - CALIBRATION_KNOWN_DISTANCE) < 0.06
+        and abs(means[a][2] - means[b][2]) / np.linalg.norm(means[a] - means[b]) > 0.99
+    ]
+    assert len(plumb) == 1, f"expected one plumb-line pair, found {len(plumb)}"
+    first, second = plumb[0]
+
+    a = next(t for t in session.trajectories if t.id == first)
+    b = next(t for t in session.trajectories if t.id == second)
+    shared = np.intersect1d(a.frames, b.frames)
+    per_frame = np.linalg.norm(
+        a.positions[np.isin(a.frames, shared)] - b.positions[np.isin(b.frames, shared)], axis=1
+    )
+    distance = float(per_frame.mean())
+
+    assert distance == pytest.approx(CALIBRATION_KNOWN_DISTANCE, abs=CALIBRATION_TAPE_TOLERANCE)
+    assert distance == pytest.approx(0.99672, abs=1e-4), "the pinned measured value"
+    assert per_frame.std() < 1e-4
+    # The vertical-scale hypothesis is excluded, and by a wide margin.
+    assert distance > 0.98, "a vertical scale error explaining g = 9.2757 needs 948.9 mm"

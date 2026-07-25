@@ -61,5 +61,12 @@ CALIBRATION_QTM = "2026-06-10-1m_markers_calibration.qtm"
 CALIBRATION_KNOWN_DISTANCE = 1.000
 CALIBRATION_TAPE_TOLERANCE = 0.005
 
-#: Recordings that contain juggling — which is now all of them.
-JUGGLING_QTM_SAMPLES = list(QTM_SAMPLES)
+#: Two markers hung as a plumb line a tape-measured 1000 mm apart, no juggling.
+#:
+#: The lower marker was "droppy" and arrives as **957 separate pieces**, which makes this
+#: file a good stress test of the piece-table reader as well as a vertical scale oracle
+#: and the negative case for classification.
+VERTICAL_CALIBRATION_QTM = "2026-06-10-1m_markers_vertical_calibration.qtm"
+
+#: Recordings that contain juggling. The vertical-baseline clip does not.
+JUGGLING_QTM_SAMPLES = [p for p in QTM_SAMPLES if "vertical" not in p.name]

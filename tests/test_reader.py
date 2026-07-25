@@ -16,7 +16,7 @@ from juggling_analyser import load
 from juggling_analyser.core.clean import classify_session
 from juggling_analyser.io.qtm import read_qtm, scan_qtm
 
-from .conftest import JUGGLING_QTM_SAMPLES, QTM_SAMPLES
+from .conftest import JUGGLING_QTM_SAMPLES, QTM_SAMPLES, VERTICAL_CALIBRATION_QTM, sample
 
 SAMPLES = QTM_SAMPLES
 JUGGLING = JUGGLING_QTM_SAMPLES
@@ -122,6 +122,46 @@ def test_load_helper_classifies() -> None:
     session = load(str(JUGGLING[0]))
     assert any(t.kind == "ball" for t in session.trajectories)
     assert all(t.kind != "unknown" or t.n_samples >= 15 for t in session.trajectories)
+
+
+def test_a_scene_with_no_juggling_yields_no_balls() -> None:
+    """The negative case: a recording with nothing thrown must produce no ball.
+
+    `2026-06-10-1m_markers_vertical_calibration.qtm` is 10 s of robots and two hanging
+    markers with nothing in flight. A classifier that hallucinated a ball here would be
+    free to hallucinate one anywhere, and `core.flight` must find no flight at all.
+    """
+    from juggling_analyser.core.flight import segment_session
+
+    session, report = classify_session(read_qtm(sample(VERTICAL_CALIBRATION_QTM)))
+    assert report.ball == 0, f"a static scene produced {report.ball} ball trajectories"
+    assert segment_session(session, calibrate=False).flights == ()
+
+
+def test_a_marker_fragmented_into_hundreds_of_pieces_still_reads() -> None:
+    """The droppy marker: 957 pieces in one trajectory, and every invariant holds.
+
+    The most fragmented trajectory in the corpus by two orders of magnitude, so it is the
+    real test of the `Parts` table handling: 957 piece lengths summing exactly to the
+    decoded sample count.
+
+    It is also the clearest example in the corpus of what QTM's *Mixed* actually means.
+    Every one of those 957 pieces **abuts** its neighbour — QTM gap-filled all 610 lost
+    samples, so the trajectory has no missing frame at all despite dropping out
+    constantly. `is_contiguous` is therefore True while `has_gap_filled_samples` is also
+    True, which is exactly why they are separate properties (docs/qtm-format.md).
+    """
+    session = read_qtm(sample(VERTICAL_CALIBRATION_QTM), include_unexported=True)
+    worst = max(session.trajectories, key=lambda t: len(t.pieces))
+    assert len(worst.pieces) > 900, f"expected heavy fragmentation, got {len(worst.pieces)}"
+    assert sum(p.length for p in worst.pieces) == worst.n_samples
+    # Gap-filled, not holed: the pieces abut and no frame is missing.
+    assert worst.is_contiguous
+    assert worst.gaps() == ()
+    assert worst.has_gap_filled_samples
+    gap_filled = int((worst.sample_type == 2).sum())
+    assert gap_filled > 500, f"expected many gap-filled samples, got {gap_filled}"
+    assert np.all(np.diff(worst.frames) == 1)
 
 
 def test_reader_rejects_a_file_that_is_not_a_qtm_measurement(tmp_path: Path) -> None:

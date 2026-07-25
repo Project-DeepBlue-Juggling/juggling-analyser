@@ -969,3 +969,96 @@ a beat grid — its 31 detected flights are arc tops, which is why their apex-ab
 heights (0.007–0.30 m) are erratic and why `8·z_apex/t_air²` returns nonsense (0.7–37).
 That is a *framing* problem, not a calibration one, and it is worth fixing before the next
 juggling capture: the volume needs to extend down to hand height.
+
+---
+
+## Vertical scale is CORRECT too — the anisotropic hypothesis is refuted (2026-07-25)
+
+`data/2026-06-10-1m_markers_vertical_calibration.qtm`: 3000 frames, no juggling, two
+markers hung as a plumb line a tape-measured 1000 mm apart. Series 27 sits above series
+29 — the latter being the "droppy" marker the owner warned about, and it is dramatically
+so: **957 separate pieces** across 2998 samples, which the piece-table reader handles
+without complaint.
+
+    separation vector   (+0.0023, -0.0058, +0.9967) m
+    vertical fraction   0.99998            <- a genuine plumb line, 6.2 mm of horizontal offset
+    co-present frames   2998 of 3000
+    MEASURED            996.72 mm   sd 0.047 mm   (min 996.54, max 996.87)
+    vs tape 1000 mm     -3.28 mm = -0.328%
+
+The vertical-scale-error hypothesis predicted **948.9 mm**. The measurement is 996.7 mm,
+inside the owner's stated tape precision of a few mm. **So the vertical scale is correct,
+and the anisotropic hypothesis is refuted.** Both axes are now verified against physical
+ground truth:
+
+    horizontal scale   +0.056%   (1000.56 mm across a 99.5%-horizontal baseline)
+    vertical scale     -0.328%   (996.72 mm across a 99.998%-vertical baseline)
+
+### My own fit is not the problem either
+
+Checked three ways on the five longest flights of the juggling recording, deliberately
+bypassing `core.flight`:
+
+| series | `core.flight` | plain `np.polyfit` | raw 2nd differences (median) |
+|---|---|---|---|
+| 45 | 9.379 | 9.379 | −9.230 |
+| 56 | 9.268 | 9.274 | −9.268 |
+| 52 | 9.382 | 9.390 | −9.258 |
+| 41 | 9.392 | 9.394 | −9.461 |
+| 56 | 9.158 | 9.155 | −8.818 |
+
+All three agree. The data genuinely has `|a_z| ≈ 9.2–9.4 m/s²`; no fitting artefact.
+
+**A marker mounted off-centre on a spinning ball is also excluded.** That would leave
+5–15 mm of residual in x and y against a *linear* fit, since nothing absorbs it there.
+Measured: 0.4–2.0 mm rms, 5.3 mm worst case. The tracked point is effectively the ball
+centre.
+
+### Where that leaves the arithmetic
+
+`g_fit = g · s_z / k²`, with `s_z` the vertical position scale and `k = f_true/f_s`. With
+`s_z = 0.9967` measured and `g_fit = 9.2757`:
+
+    k^2 = 9.80665 x 0.9967 / 9.2757 = 1.0537   ->   k = 1.0265   ->   f_true = 308 Hz
+
+So if the scale is right — and it now is, in both axes — **the capture clock must be
+running at about 308 Hz while the file reports 300.** For the 2024 clips the same
+arithmetic gives 304 Hz, though their scale was never measured so `k` is not uniquely
+pinned there.
+
+The earlier argument against timing was that the two clocks inside each `.qtm` agree to
+3.3e-07. That argument was explicitly caveated as depending on whether the session clock
+is camera-derived or the PC clock re-expressed, and the file does not say. If it is the
+PC clock, the argument is vacuous — which is now the likely reading.
+
+Note also that QTM's own bookkeeping is internally consistent at 300 Hz: a 10 s capture
+setting, 3000 frames, and a TSV export whose `Time` column equals `(frame−1)/300` to
+3e-06 s. So a rate error would be upstream of both QTM's arithmetic and this reader's.
+
+### The two measurements that would settle it
+
+1. **A pendulum.** A marker on a string of measured length `L`, swung gently, gives
+   `g = 4π²L/T²`. `L` is a distance (now verified in both axes) and `T` a time from the
+   frame count, so it measures `g` through exactly the same scale and clock as the
+   juggling does — but with no ballistic assumption at all. 20 swings in 10 s gives `T`
+   to a fraction of a percent. **If it returns 9.807 the clock is fine and the ballistic
+   anomaly is something else; if it returns ~9.28 the clock is confirmed wrong.**
+2. **Time a long capture with a stopwatch.** Set QTM to capture 60 s and time it. At a
+   true 308 Hz a nominal 60 s capture finishes in 58.5 s — a 1.5 s discrepancy, well
+   above human reaction time. Crude but completely independent of everything above.
+
+### Hypotheses eliminated so far, each with a number
+
+| hypothesis | eliminated by |
+|---|---|
+| isotropic length scale | horizontal metre reads 1000.56 mm |
+| **vertical-only length scale** | **vertical metre reads 996.72 mm** |
+| my parabola fitting | polyfit and 2nd differences agree with it |
+| off-centre marker on a spinning ball | x/y linear-fit residuals are 0.4–2.0 mm, not 5–15 |
+| sensor noise | 0.028 mm on static markers |
+| air drag | ~1% at these speeds, and anti-correlated with the observed deficit |
+| tilted Z axis | would need 13°, data implies 2.4° |
+| gap-filling | 63 gap-filled samples in the whole file |
+| the reader | pinned to a TSV export at 5e-07 m and to two physical metres at 0.2/3.3 mm |
+
+What survives: **the capture clock.**
