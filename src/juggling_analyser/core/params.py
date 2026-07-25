@@ -91,6 +91,111 @@ MAX_FLIGHT_RESIDUAL = 5e-3
 #: free flight at all.
 MAX_GRAVITY_DEVIATION = 0.20
 
+# --------------------------------------------------------------------------- #
+# Identity linking (DESIGN.md §7)
+# --------------------------------------------------------------------------- #
+
+#: Longest gap a bridge is considered *confident* over, s (DESIGN.md §13).
+MAX_BRIDGED_GAP = 0.250
+
+#: Longest gap the linker will bridge at all, s.
+#:
+#: DESIGN.md §13 gives one figure, 250 ms. Measured on `5_ball_juggling_cut`, the
+#: five gaps that must be crossed to recover 5 balls are 413, 293, 280, 157 and
+#: 150 ms — so a hard 250 ms ceiling makes the clip's own acceptance criterion
+#: (5 lanes, ≤ 400 frames of gap) unreachable, and 383 frames of real gap would be
+#: reported as five extra balls.
+#:
+#: So 250 ms becomes the *confidence* boundary rather than the feasibility one:
+#: a longer bridge is still allowed when the combinatorics demand it — a lane
+#: cannot simply be abandoned, since the minimum number of lanes is the ball count
+#: — but it is charged more and `BridgedGap.confident` is False, so a metric
+#: computed across it can be flagged. 600 ms is roughly two dwell times, beyond
+#: which "the same ball" is not an inference any evidence here supports.
+MAX_LINK_GAP = 0.600
+
+#: How much the *reported* per-sample uncertainty understates the true one.
+#:
+#: Measured, not assumed. Phase 2 found that a clean flight's free-gravity parabola
+#: residual is ~1.2 mm where QTM's reported residual is ~0.35 mm, and that chi²/dof
+#: over those fits runs at 15-35 rather than ~1 — both say the reported sigma is
+#: optimistic by roughly a factor of 3.
+#:
+#: It matters here because the link cost is a chi-squared: understating sigma by 3x
+#: overstates chi-squared by 9x, and a *correct* link across the 5-ball clip's
+#: 417 ms gap scored 11.4 against a gate of 9 for exactly that reason. Inflating by
+#: the measured factor is the difference between rejecting a real link and accepting
+#: it. A static-marker recording would replace this estimate with a direct
+#: measurement (OWNER_ACTIONS.md).
+SIGMA_UNDERESTIMATE_FACTOR = 3.0
+
+#: Chi-squared above which a candidate link is rejected outright.
+#:
+#: The link cost is a per-degree-of-freedom chi-squared over the position and
+#: velocity mismatch, so 9 is a 3σ gate on each. Generous on purpose: the cost
+#: still *ranks* candidates, and the global assignment is far better placed than
+#: this threshold to resolve a close call. Its job is only to keep impossible
+#: links out of the matrix.
+LINK_CHI2_LIMIT = 9.0
+
+#: Samples used to fit a trajectory's endpoint state when it is not inside a
+#: detected flight. 20 samples is 67 ms at 300 Hz — long enough to constrain a
+#: velocity, short enough not to average across a catch.
+LINK_ENDPOINT_SAMPLES = 20
+
+#: How many samples past a flight's refined boundary a trajectory endpoint may sit
+#: and still be treated as ballistic.
+#:
+#: Boundary refinement trims a flight *inward* from the last tracked sample, so
+#: when tracking dies mid-flight the trajectory's final samples are exactly the
+#: contaminated ones the refinement dropped — and without slack here no endpoint
+#: is ever ballistic and half the link cost model never runs. 12 samples is 40 ms
+#: at 300 Hz, about the boundary blur the refinement removes.
+LINK_FLIGHT_MARGIN = 12
+
+#: Fastest a hand is assumed to move, m/s, when testing whether a gap could have
+#: been spent in a hand rather than in flight. A juggling hand peaks at roughly
+#: 2–3 m/s during a throw; 3.0 is deliberately permissive, because the purpose is
+#: to *admit* the carry hypothesis for scoring, not to decide anything on its own.
+CARRY_MAX_HAND_SPEED = 3.0
+
+#: Cost of leaving a trajectory without a successor, i.e. of starting a new lane.
+#:
+#: Large on purpose, so the solver always prefers any *feasible* link and the
+#: result is a minimum path cover: the lane count then equals the maximum number of
+#: simultaneously-active trajectories, which is DESIGN.md §7's own ball-count
+#: estimate. The real link costs only break ties among the covers of that size.
+#:
+#: **A finite value was tried and is worse.** Setting it to 24 — just below the
+#: worst link the gates admit (chi-squared 9 + carry penalty 10 + stretch 9) so
+#: that the most marginal bridge loses to declaring a new lane — was intended to
+#: stop the linker inventing an identity it cannot support. Measured: it did *not*
+#: improve any synthetic case (5-ball truth stayed at 0.615 correct) and it broke
+#: the one criterion that was passing, taking the real 5-ball clip from 5 lanes to
+#: 8. So the trade-off is not where the problem is; see BUILD_LOG.md Phase 4 for
+#: what the problem appears to be. Kept as a parameter because the experiment is
+#: worth repeating once the link cost itself discriminates better.
+LANE_END_COST = 1e6
+
+#: Furthest a ball may move across a bridged gap, m, however long the gap is.
+#:
+#: `hand_speed × dt` alone is the wrong bound and it caused real linking errors: over
+#: a 550 ms gap it permits 1.65 m of travel, which admits almost any pair of
+#: trajectories. But the cap must comfortably exceed the 0.4 m hand separation,
+#: because a gap long enough to contain a catch and a throw also contains part of a
+#: flight — the 5-ball clip's 417 ms bridge covers 722 mm, and it is correct.
+#:
+#: Swept against both the truth fixtures and the corpus: 0.5 m splits the real
+#: 5-ball clip into 6 lanes, while 0.8, 1.0 and 1.5 m all give exactly 5 lanes with
+#: identical synthetic scores. 1.0 sits in the middle of that plateau rather than at
+#: its edge. The effective bound is `min(hand_speed × dt, CARRY_MAX_TRAVEL)`.
+CARRY_MAX_TRAVEL = 1.0
+
+#: Cost added to a carry-hypothesis link so that, all else equal, a ballistic
+#: bridge wins. A carry bridge asserts much less — position continuity only, with
+#: velocity unconstrained — so it should never beat a ballistic bridge that fits.
+CARRY_BRIDGE_PENALTY = 10.0
+
 #: Lower bound on the per-sample 1σ position uncertainty, m.
 #:
 #: QTM reports a per-sample *residual* — the RMS ray-intersection error of the

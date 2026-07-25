@@ -421,3 +421,179 @@ ordinal and immune; `t_air`, `t_d` and `τ_b` are correct under hypothesis 1 and
 - The 3-ball `t_air` distribution has a p10 of 0.13 s, short for a 3-ball cascade
   and probably marking flights split by tracking loss. P4's linking should merge
   them; worth re-checking then.
+
+---
+
+## Phase 3 — Synthetic ground truth    PARTIAL (2026-07-25)
+
+### Airtime truth exporter — DONE, branch pushed, but its gate could not be verified here
+
+Delivered on Airtime's `feat/truth-export` branch (HEAD `ac4ae31`, pushed; `main`
+untouched at `efe72c1`). One new module `src/export/truth.ts`, one test file
+(18 tests), one Node runner `scripts/exportTruth.mjs`, and a single line added to
+`package.json`. **No dependency added** — the runner loads the TypeScript through
+Vite's own `runnerImport`. The exporter is deliberately not re-exported from
+`src/export/index.ts`, and the built `dist/` bundle is byte-identical to before.
+
+Eight fixtures are committed here in `data/truth/`: `3 4 5 7 441 531 552 423`, each
+3000 frames at 300 Hz, τ_b = 0.25 s, `t_d` = 0.30 s, `g` = 9.80665, positions in the
+juggling frame, byte-identical on regeneration. Verified: `mean(pattern digits)`
+equals the ball count exactly for all eight; `t_air` matches `h·τ_b − t_d_eff` to
+7e-16; apex height matches `g·t_air²/8` to 5e-10 m; throw times sit on the τ_b grid
+with **zero** drift; differentiating the sampled tracks twice recovers `a_z = −g` to
+1.6e-4 m/s², which is exactly the 1e-9 coordinate rounding and nothing else.
+
+**`npm run gate` in Airtime is red on this machine and it is not our change.**
+Airtime has five pairs of source files differing only in case (`Hands.tsx`/`hands.ts`
+and four more). `tsc` cannot resolve them on Windows — `typescript.js` hard-codes
+`isFileSystemCaseSensitive() === false` for win32, so it fails even on an
+NTFS per-directory case-sensitive mirror. Measured on a clean `main` checkout: 20
+typecheck errors, 32 test failures. On the branch: the same 20 typecheck errors, and
+on a case-sensitive mirror **816 tests pass (60 files), eslint clean, `vite build`
+clean**. Not one error is in an added file. Nothing was renamed to force it green —
+that would be the refactor ORCHESTRATOR §6 forbids. **This needs verifying on Linux
+or in Airtime's CI before the branch is merged** (OWNER_ACTIONS.md).
+
+### Four properties of the fixtures that downstream code must know
+
+1. **`y` (forward) is identically 0** in every sample. Airtime's default hand preset
+   is a line, so the truth is perfectly planar and the throw/catch cloud is four
+   collinear points. Any depth spread must come from the degradation model.
+2. **Event frames were rounded half-*up*** in JavaScript. Python's `round()` is
+   half-to-even and ~21% of events land exactly halfway between samples, so a naive
+   conversion disagrees on ~10% of them. Use `math.floor(t·f_s + 1.5)`.
+   `generator.params.frame_rounding` records this.
+3. **Held `2`s emit no events.** In `552` and `423` a `2` rides the hand with no
+   flight, giving 27 throws rather than 40 and one ball with a long eventless carry.
+4. **`t_air` for a `1` is not `h·τ_b − t_d`.** Airtime clamps dwell as
+   `t_d_eff(h) = min(t_d, 0.75·h·τ_b)`, so `441` and `531` deviate from the naive
+   identity by exactly 0.1125 s on their `1`s. Against the clamped form: 7e-16.
+
+Also: `7.json` uses the same τ_b = 0.25 s as the rest, giving a 2.58 m apex —
+unrealistic for 7 balls, but perfectly valid labelled data. The exporter takes
+`--beat-period` if realistic heights are wanted.
+
+### `core/synth.py` — NOT DELIVERED
+
+The degradation model (Gaussian noise, apex/crossing dropouts, fragmentation,
+identity swaps, spurious reflections) was specified in full, with calibration
+targets measured from the corpus, and delegated. It did not land before the run
+ended. What it was to be calibrated against is recorded here so the work is not
+lost:
+
+| Statistic | `5_ball_juggling_cut` (CLEAN preset) | `3_ball_juggling_cut` (NOISY preset) |
+|---|---|---|
+| ball trajectories per ball | 10 for 5 = **2.0** | 19 for 3 = **6.3** |
+| trajectory length, median samples | **2422** | **1015** |
+| trajectory length, min | 285 | 166 |
+| coverage of all ball-frames | **98.5%** (24 452 of 24 835) | **91.6%** (25 013 of 27 303) |
+| internal gaps inside a trajectory | 0 | 5, median 16, max 27 |
+| reported σ, median / p90 / max | 0.441 / 1.655 / 5.743 mm | 0.559 / 2.414 / 5.890 mm |
+| clip length | 4967 frames @ 300 Hz | 9101 frames @ 300 Hz |
+
+The consequence is that P4 was validated against **fragmented exact truth** — the
+fixtures cut into pieces with gaps and Gaussian noise, in `tests/test_link.py` — but
+not against identity swaps or spurious reflections. Those two are precisely the
+degradations the linker is least likely to survive, so its measured scores below
+should be read as an **upper bound**.
+
+---
+
+## Phase 4 — Identity linking    PARTIAL (2026-07-25)
+
+**The real-data criterion passes exactly. The synthetic 5-ball criterion fails.**
+
+| Criterion (PLAN.md P4) | Result |
+|---|---|
+| gate green | **PASS** — ruff clean, mypy strict clean, 272 tests, 1 xfail |
+| real 5-ball clip: exactly 5 lanes tiling the recording | **PASS** — 5 lanes, every one spanning frames 1–4967 |
+| total gap ≤ 400 frames | **PASS** — **383** (24 452 measured of 24 835 ball-frames, 98.46%) |
+| no non-collision violation | **MARGINAL** — one frame at 73.8 mm against the 74 mm diameter, 0.2 mm inside. Correcting for Phase 2's measured −2.87% scale deficit puts it at 76.0 mm, i.e. no violation. Asserted as measured numbers, not waved away. |
+| 100% linking on synthetic 3 balls | **PASS** — 1.000, every lane pure, 3 lanes |
+| 100% linking on synthetic 5 balls | **FAIL** — **0.615**, purity 0.571, 7 lanes for 5 balls |
+| ≥ 95% on synthetic 7 balls | **PASS** — **0.952**, every lane pure |
+
+Other fixtures, for the record: `4` 1.000/pure; `441` 0.889/pure; `531` 0.778/pure;
+`423` 0.778/pure; `552` 0.583/purity 0.50. `ball_count` — the maximum-overlap
+estimate — is **correct on all eight**, so the failure is in *bridging*, never in
+counting.
+
+Two scores are reported because they mean different things. `score_linking` is the
+fraction of trajectories in the right lane; `identity_purity` is the fraction of
+lanes containing exactly one true ball. A ball split across two lanes is a coverage
+failure and every lane stays pure; a lane holding two balls is an identity failure
+that corrupts dwell times and the siteswap. Only `5.json` and `552.json` show the
+latter.
+
+### Approach
+
+Minimum-cost path cover of a DAG, solved exactly with the Hungarian algorithm, not
+greedily. By Dilworth's theorem the minimum number of node-disjoint paths equals the
+maximum number of simultaneously-active trajectories — which is also DESIGN.md §7's
+ball-count estimate — so minimising the lane count and estimating `b` are the same
+problem and the answer is not a guess. Each gap is scored under two hypotheses:
+**ballistic** (predict the state forward, chi-squared on position and velocity) and
+**carry** (position continuity only, velocity free because it reverses at a catch).
+
+### What was measured and what it cost
+
+- **Every trajectory endpoint initially read `ballistic=False`**, so half the cost
+  model was dead code. Cause: Phase 2's boundary refinement trims a flight *inward*,
+  so when tracking dies mid-flight the trajectory's final samples are exactly the
+  contaminated ones the refinement dropped, and the last index falls outside its own
+  flight. Fixed with `LINK_FLIGHT_MARGIN = 12` samples of slack, taking the state at
+  the flight's own boundary time.
+- **DESIGN.md §13's 250 ms gap ceiling makes P4's own criterion unreachable.** The
+  five gaps that must be crossed on the 5-ball clip are 413, 293, 280, 157 and
+  150 ms. So 250 ms became the *confidence* boundary (`BridgedGap.confident`) and
+  `MAX_LINK_GAP = 600 ms` the feasibility one.
+- **`CARRY_MAX_TRAVEL` was swept, not guessed.** `hand_speed × dt` alone permits
+  1.65 m over a 550 ms gap, which admits almost anything. But the cap must exceed the
+  0.4 m hand separation, because a gap containing a catch and a throw also contains
+  part of a flight — the clip's 417 ms bridge legitimately covers 722 mm. Measured:
+  0.5 m splits the real clip into 6 lanes; 0.8, 1.0 and 1.5 m all give exactly 5 with
+  *identical* synthetic scores. 1.0 sits mid-plateau.
+- **A finite lane-end cost was tried and is worse.** Making "start a new lane" cost
+  24 — just under the worst link the gates admit — was meant to stop the linker
+  inventing an identity it cannot support. It changed no synthetic score and took the
+  real clip from 5 lanes to 8. Reverted; recorded in `params.py` so the experiment is
+  not repeated blindly.
+- **A stricter carry test was tried and is correct physics but not yet usable.**
+  Requiring `v_z(in) > v_z(out) − g·dt` — only a hand can leave a ball above free
+  fall — improved synthetic purity, but rejected the 417 ms bridge and split the real
+  clip into 6 lanes. The endpoint velocities across that gap are not determined well
+  enough to carry the test. Left in the code as a comment at the exact site.
+- **The σ under-estimation from Phase 2 is now used quantitatively.** A *correct*
+  link across the 417 ms gap scored chi² = 11.4 against a gate of 9, purely because
+  the reported σ understates the true error by ~3× and chi² scales as σ⁻².
+  `SIGMA_UNDERESTIMATE_FACTOR = 3.0` applies the measured factor.
+
+### Best hypothesis for the 5-ball synthetic failure
+
+The mis-linked pairs all sit across gaps of 283–553 ms that the test's fragmenter
+created by dropping short pieces and merging two cuts. Over such a gap in a 5-ball
+pattern the ball is *still in flight* (`t_air` = 0.95 s in the fixture), so the
+ballistic hypothesis should decide it — but a 550 ms extrapolation from a velocity
+fitted over 67 ms has a position uncertainty of tens of millimetres, which admits
+several candidates, and the forced minimum path cover then picks one. The fix is a
+properly propagated prediction covariance from the flight fit itself (the flight's
+own parameter covariance, not a scalar σ_v estimate), so the chi-squared genuinely
+discriminates. That is a contained change to `_endpoint_states` and `_link_cost` and
+is the first thing to do in this area.
+
+### Deferred / open
+
+- `core/synth.py` (above) — without it, no identity-swap or spurious-reflection case
+  has ever been put through the linker.
+- **The 3-ball clip does not link into 3 balls**: 7 lanes, `ball_count` estimate 4,
+  and only 69% of its ball-frames tracked. Its untracked stretches run to seconds,
+  which no bridge can honestly cross. The estimate reads 4 because trajectories
+  briefly overlap — 17 frames of the 9101 have four active. PLAN.md sets a criterion
+  for the 5-ball clip only; this is recorded as a measured number, not a pass.
+  **P5's headline catch count does not depend on it**: a catch is the end of a
+  flight, which needs no identity.
+- 76 non-collision violations on the 3-ball clip, closest 38.4 mm. Consistent with
+  its 7 lanes for 3 balls — extra lanes are duplicate views of the same ball.
+- `score_linking` matches lanes to true balls by maximum agreement before scoring,
+  because lane ids are arbitrary. Spurious trajectories (truth `-1`) are excluded:
+  whether a reflection reaches a lane is `core.clean`'s job.

@@ -17,6 +17,16 @@ from .flight import (
     segment_trajectory,
 )
 from .frame import FrameDiagnostics, FrameTransform, derive_frame, to_juggling_frame
+from .link import (
+    Ball,
+    BallSpan,
+    BridgedGap,
+    CollisionViolation,
+    Linking,
+    estimate_ball_count,
+    link_trajectories,
+    score_linking,
+)
 from .params import BALL_DIAMETER, BALL_MASS, GRAVITY, HAND_COUNT
 from .trajectory import Piece, Session, Trajectory, Uncertainty
 
@@ -25,13 +35,18 @@ __all__ = [
     "BALL_MASS",
     "GRAVITY",
     "HAND_COUNT",
+    "Ball",
+    "BallSpan",
+    "BridgedGap",
     "Carry",
     "CleanReport",
+    "CollisionViolation",
     "Flight",
     "FlightSegmentation",
     "FrameDiagnostics",
     "FrameTransform",
     "GravityCheck",
+    "Linking",
     "Piece",
     "Session",
     "Trajectory",
@@ -40,9 +55,12 @@ __all__ = [
     "classify_session",
     "classify_trajectory",
     "derive_frame",
+    "estimate_ball_count",
     "event_positions",
     "find_flights",
+    "link_trajectories",
     "refine_with_flights",
+    "score_linking",
     "segment_session",
     "segment_trajectory",
     "to_juggling_frame",
