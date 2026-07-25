@@ -142,3 +142,134 @@ acceptance piece rather than a convenience sample.
   DeprecationWarning later, the fix is a *targeted* ignore with a comment, never
   removing the setting.
 
+---
+
+## Phase 1 — Reader v2: absolute timing, real trajectories    DONE (2026-07-25)
+
+**Accepted, with every number measured.**
+
+| Criterion (PLAN.md P1) | Result |
+|---|---|
+| gate green | green: ruff clean, mypy clean (19 files), 97 tests passed |
+| reader reproduces the TSV frame for frame, all **19** trajectories, ≤ 1e-6 m | **5.000e-07 m** worst case over all 19 — see below |
+| `info` reports 19, not 25 | 19 |
+| exactly 5 trajectories active at frame 1 | 5 |
+
+The 5.000e-07 m figure is not "within tolerance", it is **the floor**: the TSV
+writes millimetres to three decimals, so text round-tripping alone costs up to
+0.5 µm. The reader is bit-exact and the whole residual disagreement is the
+export's own rounding. The test asserts both bounds, so a real regression cannot
+hide behind the loose 1e-6.
+
+### The format finding: `Data Items` is a typed-object stream, not flat TLV
+
+The pre-phase note said "field id 17 is a per-trajectory piece table", read
+through a flat TLV walk. That walk does not actually parse the stream — it breaks
+77 bytes in. `Measurement NBC/Data Items` is a sequence of **objects**:
+`<u32 type><u32 object_id><u32 field_count>` then `field_count` TLV fields.
+**Type 10 is a Trajectory**, and its field 17 (`Parts`) is the piece table.
+
+`Measurement NBC/Metadata` turned out to be a **schema** naming every object type
+and field in id order, which converted the whole field map from inference to fact:
+field 5 = Series ID, 8 = Trajectory Label, 9 = Colour, 12 = Trajectory Type,
+13 = Point Type, 17 = Parts. Written up in `docs/qtm-format.md`.
+
+**Two gates, not one, get from 25 decodable series to 19 trajectories** — PLAN.md
+anticipated only the first:
+
+1. the series must be referenced by a Trajectory object (excludes series 232, the
+   one claiming 18 422 samples in a 4 967-frame recording);
+2. `Trajectory Type` must be 1 (excludes five *more* series in the balls-only
+   file, all motionless at z ≈ −0.67 m).
+
+Those five are static rig markers. In the other two recordings the same physical
+markers are Trajectory Type **1** and carry labels `base_0`..`base_4`, so type 2
+records a per-project state (the owner removed them from the balls-only file)
+rather than a property of the marker. Gating on it reproduces the export exactly;
+`read_qtm(..., include_unexported=True)` returns them for inspection, and a test
+asserts they are the statics.
+
+**The parse is self-validating**, which is why it can be trusted rather than
+merely believed. For every trajectory in all three recordings (24 / 62 / 25
+objects): part lengths sum to the decoded sample count, *and* the per-sample type
+flags equal the part types sample for sample. Both are hard errors in the reader —
+a mismatch would mean the format model is wrong, and continuing would corrupt
+everything downstream. `Point Type` also predicts the export's Mixed/Measured
+column for all 19.
+
+Also learned: QTM's **Mixed** means "contains gap-filled samples", *not* "has a
+hole". Series 448's three parts `[1681-1691][1692-1693][1694-4967]` abut — no
+frame is missing — and QTM still calls it Mixed. `Trajectory.is_contiguous` and
+`Trajectory.has_gap_filled_samples` are therefore separate properties.
+
+### Delivered
+
+- `core/trajectory.py` rewritten: `Uncertainty` (isotropic / diagonal / full,
+  with `cov` / `inv_cov` / vectorised `variances` / `sigma` / `take` / `scaled`),
+  `Piece`, `Trajectory`, `Session`. All frozen, all validating their invariants in
+  `__post_init__`, all `eq=False` where they hold arrays.
+  **`Fragment` and `start_frame` are gone**, along with the unknown-start-frame model.
+- `core/params.py` — DESIGN.md §13's constants in one place (`GRAVITY`,
+  `BALL_MASS`, `BALL_DIAMETER`, `HAND_COUNT`, `RESIDUAL_SIGMA_FLOOR`). Not in the
+  §2 module map; added under ORCHESTRATOR §7 because §13 requires one home for
+  defaults. The algorithm knobs join it in P2 as they start being used.
+- `io/qtm.py` rewritten: object scan, `Parts` parsing, label decoding
+  (`u32 count` + UTF-16-LE), integrity checks, `read_qtm()` and `scan_qtm()`.
+  `QtmScan` exposes what was skipped and why, so `info` reports it instead of
+  hiding it.
+- `io/tsv.py` — the oracle reader (subagent-built, reviewed). Three undocumented
+  quirks it handles: CRLF line endings; the column-header line carries a trailing
+  tab that data rows do not; `TIME_STAMP` is multi-valued, so a header line is not
+  always `KEY<TAB>one-value`.
+- `core/clean.py` adapted to the new model and the `ball`/`spurious`/`unknown`
+  vocabulary of DESIGN.md §3 (was `ball`/`static`/`ghost`). The physics-based
+  rewrite is P2's; this is lifetime and gross geometry only.
+- `cli.py`: `info` now prints the frame, the source-series accounting, what was
+  skipped, and `--all`.
+- 97 tests: the oracle suite (11), the data model (30, two of them hypothesis
+  property tests), reader invariants across the whole corpus (8 × 3 files), the
+  TSV reader (25), core purity (9).
+
+**Numbers from the corpus** (`info`):
+
+    balls_only : 41 series -> 25 decodable -> 24 objects -> 19 read; 5 at frame 1
+    5-ball     : 40 series -> 25 decodable -> 25 objects -> 24 read
+    3-ball     : 77 series -> 63 decodable -> 62 objects -> 61 read; 8 at frame 1
+                 (3 balls + the 5 base_N statics, which this file does export)
+
+### Decisions
+
+- **`f_s` is the Python identifier**, not `sample_rate`. NOTATION.md § Conventions
+  says to spell symbols out, but DESIGN.md §3 and §10 both name the field `f_s`,
+  it is already snake_case and unambiguous, and the JSON key must match. Recorded
+  here as a deliberate deviation from the convention rather than an oversight.
+- `Session.frame` records whether positions are in the QTM or the juggling frame,
+  so §5's transform cannot be applied twice or forgotten. Not in DESIGN.md §3's
+  field list; added because "which frame is this in" is otherwise unanswerable.
+- `Trajectory.label` added (generic, a video tracker can label too). QTM-specific
+  integers — display order, colour, trajectory type — deliberately stay in
+  `io/qtm.py`'s `TrajectoryObject` and out of the source-agnostic model.
+- `ruff allowed-confusables` now permits σ Σ τ × − · ≈ – ’, because NOTATION.md is
+  normative and the docstrings quote it verbatim.
+
+### Deferred / open
+
+- **QTM's residual is used as an isotropic 1σ, clamped below at 0.1 mm.** It is a
+  ray-intersection RMS, not a calibrated position σ, so the absolute scale of
+  every uncertainty-weighted result inherits that assumption. Cheap to improve if
+  the owner can supply a static-marker recording: the scatter of a motionless
+  marker gives the real σ directly. Queued for `OWNER_ACTIONS.md`.
+- The 20-byte trailer after `Parts` restates the trajectory's span
+  `(1, first_start, last_end, 0, 0)`. Not modelled — nothing needs it.
+- `Trajectory Type == 2` is understood operationally (not exported) but not
+  semantically. If a future recording exports type-2 trajectories the gate would
+  be wrong; the corpus offers no way to tell, so it is recorded, not guessed.
+- Object types other than 10 in `Data Items` are unparsed. The scan locates type-10
+  headers directly instead of walking the full grammar. Safe because every hit is
+  cross-validated against its data series, and asserted: object ids come back
+  unique and ascending, series ids unique, across all three files.
+- `io/tsv.py` uses `@dataclass(frozen=True)` with ndarray fields, so `==` on two
+  `TsvExport`s would return an array. Nothing compares them; worth `eq=False` next
+  time that file is touched.
+- No coverage threshold yet — still waiting on the modules DESIGN.md §14 names.
+

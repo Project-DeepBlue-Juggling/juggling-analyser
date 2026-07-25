@@ -7,9 +7,10 @@ notation, how many catches you made before a drop, how high and how consistently
 you throw, and how much work you're doing — plus a 3D replay of the session with
 configurable ball trails.
 
-> **Status: early alpha — Phase 0 of 10 complete** (toolchain, quality gate, CI).
-> The raw `.qtm` reader works and is tested; the tracking, metrics, and replay
-> stages are under active construction. See the [roadmap](#roadmap).
+> **Status: early alpha — Phase 1 of 10 complete.** Ingestion is finished and
+> pinned: the reader reproduces a QTM TSV export of the 5-ball clip frame for
+> frame for all 19 trajectories, to 5.0e-07 m — the export's own rounding floor.
+> Tracking, metrics, and replay are under construction. See the [roadmap](#roadmap).
 
 ## Why
 
@@ -39,28 +40,46 @@ It must be green before every commit, and CI runs exactly the same command.
 
 ## Usage
 
-```bash
-python -m juggling_analyser info data/3_ball_juggling_cut.qtm -v
+```console
+$ python -m juggling_analyser info data/5_ball_juggling_cut_balls_only.qtm
+data/5_ball_juggling_cut_balls_only.qtm
+  300 Hz, 16.6 s (4967 frames), qtm frame
+  19 trajectories (0 with internal gaps): 10 ball, 9 spurious
+  source: 41 data series, 25 decodable, 24 trajectory objects, 19 exported
+  skipped 1 series with no trajectory object: 232
+  skipped 5 trajectories QTM does not export (Trajectory Type [2]); pass --all to include them
+
+10 ball trajectorie(s); 5 active at frame 1.
 ```
 
 ```python
 import juggling_analyser as ja
 
-session = ja.load("data/5_ball_juggling_cut.qtm")  # read + classify
+session = ja.load("data/5_ball_juggling_cut_balls_only.qtm")  # read + classify
 print(session.summary())
-for ball in session.balls:  # ball trajectory fragments
-    print(ball.id, ball.n_samples, ball.height_span)
+for ball in session.balls:
+    # frames are absolute and 1-based; one ball may span several trajectories
+    print(ball.id, ball.first_frame, ball.last_frame, ball.height_span)
 ```
 
 ## Reading `.qtm` directly
 
 `.qtm` is an undocumented binary format. This project reads it **without a QTM
 install or any export step** — no CSV/TSV/C3D round-trip. The container is OLE2;
-the marker data is LZO1X-compressed with a custom block framing, recovered by
-disassembling Qualisys's `NBC.dll`. Full write-up: [`docs/qtm-format.md`](docs/qtm-format.md).
+the marker samples are LZO1X-compressed with a custom block framing, recovered by
+disassembling Qualisys's `NBC.dll`; the trajectory *descriptions* — labels,
+colours, types, and the absolute frame ranges — live in a separate typed-object
+stream whose field names come from a schema inside the file itself. Full write-up:
+[`docs/qtm-format.md`](docs/qtm-format.md).
 
 Each recovered sample keeps QTM's per-sample residual and measured/gap-filled
-flag — quality information a text export would discard.
+flag — quality information a text export would discard. The residual becomes a
+per-sample position uncertainty that is carried through the whole pipeline.
+
+Ingestion is pinned against a QTM TSV export of the 5-ball clip: all 19
+trajectories reproduce frame for frame, positions to **5.0e-07 m**, which is the
+export's own 1 µm text quantisation. Two gates are needed to get from the file's
+25 decodable data series to 19 real trajectories, and both are tested.
 
 ## Architecture
 
@@ -83,8 +102,8 @@ Built phase by phase against [`PLAN.md`](PLAN.md); the design is frozen in
 - [x] Raw `.qtm` reader (OLE2 + LZO1X) → trajectories
 - [x] Trajectory classification
 - [x] Toolchain, quality gate, core-purity enforcement, CI *(P0)*
-- [ ] Reader v2 — absolute frame ranges from the piece table, per-sample
-      uncertainty, phantom-series fix *(P1)*
+- [x] Reader v2 — absolute frame ranges from the `Parts` table, per-sample
+      uncertainty, phantom-series fix, pinned against a TSV oracle *(P1)*
 - [ ] Flight segmentation + derived juggling frame *(P2)*
 - [ ] Synthetic ground truth — Airtime exports clean truth, this repo degrades it
       into realistic mocap *(P3)*

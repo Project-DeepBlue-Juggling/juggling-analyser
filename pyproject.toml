@@ -77,6 +77,9 @@ ignore = [
     "PLR0913",  # too many arguments — analysis functions legitimately take many
     "PLR2004",  # magic value comparison — physics constants read fine inline
 ]
+# NOTATION.md is normative and uses these symbols; docstrings and comments quote
+# it verbatim, so RUF001/2/3 must not flag them as homoglyph typos.
+allowed-confusables = ["σ", "Σ", "τ", "×", "−", "·", "≈", "–", "’"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PLR2004", "PLC0415"]
@@ -90,7 +93,10 @@ known-first-party = ["juggling_analyser"]
 # --------------------------------------------------------------------------- #
 
 [tool.mypy]
-python_version = "3.11"
+# Deliberately no `python_version`: pinning it to 3.11 while running under 3.12
+# makes mypy reject numpy's own stubs, which use 3.12 `type` statements. mypy
+# follows the running interpreter; ruff's `target-version = "py311"` is what
+# holds the language floor.
 files = ["src", "tests", "tools"]
 exclude = ['^src/juggling_analyser/viewer/app/']
 strict = true
