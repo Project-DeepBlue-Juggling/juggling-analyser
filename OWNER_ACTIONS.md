@@ -13,55 +13,61 @@ pushed, CI green, gate green at every commit. Honest summary at the end.
 
 ---
 
-## 1. Swing a pendulum — 5 minutes, and it is the last hypothesis standing
+## 1. Weigh the pendulum — 2 minutes, no new recording needed
 
-Your vertical baseline refuted my hypothesis, which is exactly what it was for. Both
-axes are now verified against physical ground truth:
+Your pendulum recording is the cleanest data in the corpus. `T0 = 1.885495 s` with a
+0.06 ms spread across five cycles — the period is known to **0.003%**. The pivot located
+itself to 0.05 mm of wobble, the swing is planar to 0.3 mm, and the 0.95 m marker
+separation reads **950.79 mm (+0.083%)**.
 
-    horizontal scale   +0.056%   (1000.56 mm across a 99.5%-horizontal baseline)
-    vertical   scale   -0.328%   (996.72 mm across a 99.998%-vertical plumb line)
+**But the period alone cannot settle `g`, because it is a compound pendulum.**
+`g = 4π²L_eq/T0²` needs the *effective* length `L_eq = I/(m·d)`, which depends on the mass
+distribution and is invisible to a camera. Your markers give the geometric length
+`l = 1005.8 mm` from the pivot to the lower marker, and that brackets things:
 
-The vertical-scale hypothesis predicted 948.9 mm and the measurement is 996.7 mm, inside
-your few-mm tape precision. So the scale is right in both directions. (Your droppy marker
-came through as **957 separate pieces** and the reader stitched it without trouble — the
-plumb line is 99.998% vertical with only 6.2 mm of horizontal offset. It was a good
-measurement.)
+    massless bob (uniform rod)      L_eq = 2l/3 =  670.5 mm  ->  g =  7.45
+    massless rod (simple pendulum)  L_eq = l    = 1005.8 mm  ->  g = 11.17
 
-I also confirmed the fault is not in my own code: on the five longest flights,
-`core.flight`, a plain `numpy.polyfit`, and raw second differences all return the same
-`g ≈ 9.2–9.4`. And a marker mounted off-centre on a spinning ball is excluded — that
-would leave 5–15 mm of x/y residual against a linear fit, and the measurement is
-0.4–2.0 mm.
+Both 9.807 and 9.276 sit inside that bracket. Specifically:
 
-With the scale pinned, the arithmetic leaves one term: `g_fit = g · s_z / k²` with
-`k = f_true/f_s`. That gives **`f_true ≈ 308 Hz` while the file reports 300.**
+    L_eq required for g = 9.80665  ->  883.1 mm   (M/m ~ 0.87)
+    L_eq required for g = 9.2757   ->  835.3 mm   (M/m ~ 0.47)
 
-**The test — a pendulum.** Tie a marker to a string, measure the string length `L` to the
-marker centre, hang it, and swing it gently (small amplitude, under ~15°) for 10 s.
+**So all I need is three numbers**, and the recording you already made becomes decisive:
 
-Then `g = 4π²L/T²`, where `L` is a distance — now verified — and `T` is a period measured
-from the frame count. It measures `g` through the *same scale and the same clock* as the
-juggling, but with no ballistic assumption whatsoever. 20 swings in 10 s gives `T` to a
-fraction of a percent.
+1. the **mass of the rod/string**,
+2. the **mass of the bob**,
+3. the **rod length** and roughly where the bob's centre sits on it.
 
-- **Returns ≈ 9.807** → the clock is fine, the scale is fine, and the ballistic anomaly
-  is something about the flights themselves that I have not yet found. That would be a
-  genuine puzzle and I would want to look again from scratch.
-- **Returns ≈ 9.28** → the capture clock is confirmed running fast, and every time-derived
-  quantity in the project needs the measured rate rather than the reported one.
+Weigh them to ±20% and that is enough to separate 0.87 from 0.47.
 
-**A cruder cross-check, if the pendulum is awkward (1 minute):** set QTM to capture 60 s
-and time it with a phone stopwatch. At a true 308 Hz a nominal 60 s capture finishes in
-**58.5 s** — a 1.5 s discrepancy, comfortably above reaction time.
+(One thing the data already tells us: it is **not** a simple pendulum. If the bob
+dominated, `g` would read 11.17 m/s², which no hypothesis predicts. So there is real
+distributed mass in the rod.)
 
-**Do you need to send juggling with the vertical markers?** No. The scale question is
-closed. What is still wanted is item 1b below — a juggling recording whose volume reaches
-hand height — and it does not need the calibration markers in it.
+### If weighing is awkward, either of these also works
 
-Note for context: QTM's own bookkeeping is self-consistent at 300 Hz (a 10 s capture
-setting, 3000 frames, and a TSV export whose Time column equals `(frame−1)/300` to
-3e-06 s). So if the rate is wrong, it is wrong upstream of QTM's own arithmetic, which is
-why an external timing reference is the only way to see it.
+- **A stopwatch against a long capture (1 minute, and it needs no physics at all).**
+  Set QTM to capture 60 s and time it. At a true 308 Hz a nominal 60 s capture finishes
+  in **58.5 s**. This is the only test that is independent of every model.
+- **Rebuild it as a genuine simple pendulum**: fine thread plus a compact heavy bob (a
+  steel nut, a fishing weight). Then `L_eq = l` to a fraction of a percent. Better still,
+  record it at **two lengths** — for a simple pendulum with an unknown constant offset
+  `δ`, `g = 4π²ΔL/ΔT²` cancels `δ` exactly.
+
+### Good news from this recording
+
+The scale is now confirmed a third time and, for the first time, confirmed **isotropic**.
+Because the pendulum sweeps through orientation as it swings, the marker separation tests
+scale in many directions at once:
+
+    near vertical (2.4 deg tilt)   950.988 mm
+    near extreme (20.1 deg tilt)   950.922 mm
+    change                          -0.0069%
+
+Three independent geometries agree: horizontal +0.056%, vertical −0.328%, swept +0.083%.
+**Scale is not the problem in any direction**, which is what leaves the capture clock as
+the only candidate still standing.
 
 ---
 

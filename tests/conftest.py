@@ -50,7 +50,7 @@ THREE_BALL_QTM = "3_ball_juggling_cut.qtm"
 #:
 #: It replaced an earlier static-only version of the same filename mid-session, which
 #: is why nothing here asserts an absence of balls: that fixture no longer exists.
-CALIBRATION_QTM = "2026-06-10-1m_markers_calibration.qtm"
+CALIBRATION_QTM = "2026-07-25-1m_markers_calibration.qtm"
 
 #: The tape-measured baseline and the tape's own precision. Ground truth from outside
 #: the software entirely, which is what makes it worth testing.
@@ -66,7 +66,16 @@ CALIBRATION_TAPE_TOLERANCE = 0.005
 #: The lower marker was "droppy" and arrives as **957 separate pieces**, which makes this
 #: file a good stress test of the piece-table reader as well as a vertical scale oracle
 #: and the negative case for classification.
-VERTICAL_CALIBRATION_QTM = "2026-06-10-1m_markers_vertical_calibration.qtm"
+VERTICAL_CALIBRATION_QTM = "2026-07-25-1m_markers_vertical_calibration.qtm"
 
-#: Recordings that contain juggling. The vertical-baseline clip does not.
-JUGGLING_QTM_SAMPLES = [p for p in QTM_SAMPLES if "vertical" not in p.name]
+#: Two markers a known 0.95 m apart on a swinging pendulum. Its value is that the
+#: baseline **sweeps through orientation**, so it tests scale *isotropy* rather than one
+#: axis at a time — and its period is measured to 0.003%, which is what makes the
+#: unknown effective length the only obstacle (BUILD_LOG, "Pendulum").
+PENDULUM_QTM = "2026-07-25-0.95m_markers_pendulum_calibration.qtm"
+PENDULUM_KNOWN_DISTANCE = 0.95
+
+#: Recordings that contain juggling. The calibration clips other than the 1 m one do not.
+JUGGLING_QTM_SAMPLES = [
+    p for p in QTM_SAMPLES if not any(k in p.name for k in ("vertical", "pendulum"))
+]

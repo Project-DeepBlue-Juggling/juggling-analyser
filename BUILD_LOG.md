@@ -1062,3 +1062,91 @@ setting, 3000 frames, and a TSV export whose `Time` column equals `(frame−1)/3
 | the reader | pinned to a TSV export at 5e-07 m and to two physical metres at 0.2/3.3 mm |
 
 What survives: **the capture clock.**
+
+---
+
+## Pendulum: a third scale check passes, but the period cannot settle `g` (2026-07-25)
+
+`data/2026-07-25-0.95m_markers_pendulum_calibration.qtm` — 3000 frames, two markers on a
+swinging pendulum a known 0.95 m apart. The data is the cleanest in the corpus. The
+interpretation is blocked by one thing, and it is not the mocap.
+
+### 1. The scale is confirmed a third time, and confirmed *isotropic*
+
+    rigid separation   950.79 mm   sd 0.448 mm   vs known 950 mm  ->  +0.083%
+
+Better still, this baseline **sweeps through orientation** as the pendulum swings, from
+0.5° to 21.2° from vertical, which tests scale *isotropy* directly rather than one axis
+at a time:
+
+    separation near vertical (2.4 deg tilt)   950.988 mm
+    separation near extreme  (20.1 deg tilt)  950.922 mm
+    change with orientation                    -0.066 mm  =  -0.0069%
+
+So the scale is correct and isotropic to about a part in ten thousand across
+orientations. Three independent geometries now agree: horizontal +0.056%, vertical
+−0.328%, swept +0.083%. **The scale is not the problem, in any direction.**
+
+### 2. The kinematics are excellent
+
+    pivot located to 0.05 mm of wobble, from the rigid-body direction
+    r_upper  =   55.0 mm      r_bob = 1005.8 mm   (s + 0.95 m agrees with the sphere fit)
+    swing is planar: out-of-plane rms 0.30 mm, peak 0.83 mm
+    amplitude 21.08 deg decaying to 19.63 deg over five cycles
+    T  = 1.900468 s over 5 cycles
+    T0 = 1.885495 s after the per-cycle finite-amplitude correction,
+         sd across cycles 0.06 ms  =  0.003%
+
+So `g/L_eq = 4π²/T0² = 11.105 s⁻²` is known to 0.006%. Everything about this measurement
+is superb except the one thing that is not optical.
+
+### 3. Why it cannot discriminate: it is a *compound* pendulum
+
+`g = 4π² L_eq / T0²` needs the **effective** length `L_eq = I/(m d)`, which depends on the
+mass distribution and is invisible to a camera. The markers give the geometric length
+`l = 1005.8 mm`, and for a rigid pendulum with a point bob `L_eq` is bounded by
+
+    massless bob (uniform rod)       L_eq = 2l/3 =  670.5 mm  ->  g =  7.446
+    massless rod (simple pendulum)   L_eq = l    = 1005.8 mm  ->  g = 11.169
+
+**Both 9.807 and 9.276 lie inside that bracket**, so the measurement as constructed
+cannot separate them:
+
+    L_eq required for g = 9.80665  :  883.1 mm   (L_eq/l = 0.878)
+    L_eq required for g = 9.2757   :  835.3 mm   (L_eq/l = 0.831)
+
+For a uniform rod of mass `m` plus a point bob of mass `M`,
+`L_eq/l = (m/3 + M)/(m/2 + M)`, so those ratios imply `M/m = 0.87` and `M/m = 0.47`
+respectively. Both are entirely ordinary objects. Discriminating needs `L_eq` to ~5%,
+i.e. the masses to ~20%.
+
+The data does rule out one thing: **it is not a simple pendulum.** If the bob dominated,
+`L_eq ≈ l` and `g` would be 11.17 m/s², which no hypothesis predicts. So there is real
+distributed mass in the rod, exactly as the bracket suggests.
+
+### 4. What would settle it, cheapest first
+
+1. **Weigh it.** The rod/string mass, the bob mass, and the rod length. `L_eq` is then
+   computable and **this existing recording becomes decisive** — no new capture at all.
+2. **A stopwatch against a long capture.** Completely independent of any physics: at a
+   true 308 Hz a nominal 60 s capture finishes in 58.5 s.
+3. **Rebuild it as a genuine simple pendulum** — fine thread plus a compact heavy bob
+   (a steel nut or fishing weight). Then `L_eq = l` to a fraction of a percent and one
+   recording answers it. Better still, record two lengths: for a simple pendulum with an
+   unknown constant offset `δ`, `g = 4π²ΔL/ΔT²` cancels `δ` exactly.
+
+### 5. Where the investigation stands
+
+| hypothesis | status |
+|---|---|
+| isotropic length scale | **excluded** — horizontal metre 1000.56 mm |
+| vertical-only length scale | **excluded** — vertical metre 996.72 mm |
+| anisotropic scale, any orientation | **excluded** — swept baseline varies by 0.0069% |
+| my parabola fitting | **excluded** — polyfit and 2nd differences agree |
+| off-centre marker on a spinning ball | **excluded** — x/y linear residuals 0.4–2.0 mm |
+| sensor noise | **excluded** — 0.028 mm on static markers |
+| air drag | **excluded** — ~1%, and anti-correlated with the deficit |
+| tilted Z axis | **excluded** — would need 13°, data implies 2.4° |
+| gap-filling | **excluded** — 63 samples in the whole file |
+| the reader | **excluded** — pinned to a TSV at 5e-07 m and three physical lengths |
+| **the capture clock** | **still standing, and now the only candidate** |

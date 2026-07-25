@@ -25,6 +25,8 @@ from .conftest import (
     CALIBRATION_KNOWN_DISTANCE,
     CALIBRATION_QTM,
     CALIBRATION_TAPE_TOLERANCE,
+    PENDULUM_KNOWN_DISTANCE,
+    PENDULUM_QTM,
     VERTICAL_CALIBRATION_QTM,
     sample,
 )
@@ -261,3 +263,40 @@ def test_reader_reproduces_a_tape_measured_vertical_metre() -> None:
     assert per_frame.std() < 1e-4
     # The vertical-scale hypothesis is excluded, and by a wide margin.
     assert distance > 0.98, "a vertical scale error explaining g = 9.2757 needs 948.9 mm"
+
+
+def test_scale_is_isotropic_across_orientation() -> None:
+    """The strongest scale check available: one baseline, swept through orientation.
+
+    The horizontal and vertical oracles above each pin one direction. This one pins the
+    *isotropy*, because the two markers sit on a swinging pendulum and their separation
+    vector rotates through 20° of tilt while remaining a rigid 0.95 m. If any axis of the
+    capture volume were mis-scaled, the measured separation would breathe as the pair
+    turned. It does not, to 7 parts in 100 000.
+
+    This is what leaves the capture clock as the only remaining explanation for the
+    corpus's gravity deficit (BUILD_LOG, "Pendulum").
+    """
+    session = read_qtm(sample(PENDULUM_QTM), include_unexported=True)
+    trajectories = {t.id: t for t in session.trajectories}
+    upper, lower = trajectories["24"], trajectories["28"]
+    shared = np.intersect1d(upper.frames, lower.frames)
+    vector = (
+        lower.positions[np.isin(lower.frames, shared)]
+        - upper.positions[np.isin(upper.frames, shared)]
+    )
+    separation = np.linalg.norm(vector, axis=1)
+
+    assert separation.mean() == pytest.approx(PENDULUM_KNOWN_DISTANCE, abs=0.005)
+    assert separation.mean() == pytest.approx(0.95079, abs=1e-4), "the pinned value"
+
+    # Tilt of the baseline away from vertical, and the separation at each extreme.
+    tilt = np.degrees(np.arccos(np.clip(np.abs(vector[:, 2]) / separation, -1.0, 1.0)))
+    assert tilt.max() > 20.0, "the pendulum must actually swing for this to test anything"
+    near_vertical = separation[tilt < np.percentile(tilt, 15)].mean()
+    near_extreme = separation[tilt > np.percentile(tilt, 85)].mean()
+    relative_change = abs(near_extreme / near_vertical - 1.0)
+    assert relative_change < 2e-4, (
+        f"separation changed by {relative_change * 100:.4f}% between "
+        f"{tilt.min():.1f} deg and {tilt.max():.1f} deg of tilt — anisotropic scale"
+    )

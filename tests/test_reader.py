@@ -16,7 +16,13 @@ from juggling_analyser import load
 from juggling_analyser.core.clean import classify_session
 from juggling_analyser.io.qtm import read_qtm, scan_qtm
 
-from .conftest import JUGGLING_QTM_SAMPLES, QTM_SAMPLES, VERTICAL_CALIBRATION_QTM, sample
+from .conftest import (
+    JUGGLING_QTM_SAMPLES,
+    PENDULUM_QTM,
+    QTM_SAMPLES,
+    VERTICAL_CALIBRATION_QTM,
+    sample,
+)
 
 SAMPLES = QTM_SAMPLES
 JUGGLING = JUGGLING_QTM_SAMPLES
@@ -124,17 +130,20 @@ def test_load_helper_classifies() -> None:
     assert all(t.kind != "unknown" or t.n_samples >= 15 for t in session.trajectories)
 
 
-def test_a_scene_with_no_juggling_yields_no_balls() -> None:
+@pytest.mark.parametrize("name", [VERTICAL_CALIBRATION_QTM, PENDULUM_QTM])
+def test_a_scene_with_no_juggling_yields_no_balls(name: str) -> None:
     """The negative case: a recording with nothing thrown must produce no ball.
 
-    `2026-06-10-1m_markers_vertical_calibration.qtm` is 10 s of robots and two hanging
-    markers with nothing in flight. A classifier that hallucinated a ball here would be
-    free to hallucinate one anywhere, and `core.flight` must find no flight at all.
+    Two of them, and the pendulum is the harder one. The vertical-baseline clip is
+    entirely static, but the pendulum clip contains a marker swinging through 0.7 m on a
+    curved path with real acceleration — the closest thing to a thrown ball that is not
+    one. A classifier that hallucinated a ball there would be free to hallucinate one
+    anywhere, and `core.flight` must find no free flight in either.
     """
     from juggling_analyser.core.flight import segment_session
 
-    session, report = classify_session(read_qtm(sample(VERTICAL_CALIBRATION_QTM)))
-    assert report.ball == 0, f"a static scene produced {report.ball} ball trajectories"
+    session, report = classify_session(read_qtm(sample(name)))
+    assert report.ball == 0, f"{name} produced {report.ball} ball trajectories"
     assert segment_session(session, calibrate=False).flights == ()
 
 
