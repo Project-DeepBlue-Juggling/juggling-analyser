@@ -785,3 +785,34 @@ identity swap or a spurious reflection, and its scores are an upper bound.
   (3.05), `423` (3.519) and `552` (5.000 against 4 balls) — the last two because held
   `2`s emit no throw event, so the mean is over the throws that exist. Exposed as data,
   not raised, which is the right call.
+
+---
+
+## Phase 2 — addendum: the tape-measure validation route is dead (2026-07-25)
+
+The owner measured `base_2`↔`base_4` as **261 mm**. The recordings put that pair at
+**710.7 mm**. Crucially, 261 mm matches **none** of the five tracked markers' ten
+pairwise distances (116.5, 298.8, 314.9, 432.2, 435.8, 443.0, 526.6, 550.9, 600.5,
+710.7 mm), so this **cannot** be a labelling mismatch — no permutation of names yields
+261 mm. The two point sets are different configurations, and the recordings are dated
+2024-12-12 16:14:59 and 16:25:26, so the markers were most likely moved in the months
+since. `OWNER_ACTIONS.md` item 1 has been rewritten to ask for a fresh tape-measured
+baseline recording instead.
+
+Verified while checking: labels are read directly from field 8 and are QTM's own. QTM
+defines **six** markers `base_0`..`base_5`; **`base_0` has zero samples** and was never
+tracked, which is a plausible source of an off-by-one in any manual numbering.
+
+**A new piece of evidence, and it moves the diagnosis.** `Measurement/Info` carries a
+wall-clock date-time (field 1, a `SYSTEMTIME`) and a float64 session clock (field 4).
+Across the two recordings the session clock advances 626.757794 s while the wall clock
+advances 626.758000 s — **0.206 ms of disagreement over 626.8 s, i.e. 3.3e-07
+relative**. A 1.45% sample-rate error would require 9.1 s of disagreement here.
+
+This is strong evidence against the timing hypothesis *if* field 4 is derived from the
+camera time base rather than being the PC clock re-expressed, and the file does not
+settle which; QTM's metadata schema names `TimeBaseFrequency` and `TimeBaseOffset` but
+both are absent from these files. Recorded as **moderate evidence against timing,
+making the calibration length scale the leading explanation of the −2.6% gravity
+deficit.** No timecode stream exists in the files, so there is no further route to
+pin the sample rate from the data alone.

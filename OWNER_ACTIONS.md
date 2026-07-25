@@ -29,24 +29,67 @@ the reader. Two causes remain and ball trajectories alone cannot separate them:
 2. the capture **sample rate** is really ~295.7 Hz, not the 300 Hz the file reports
    (`g_fit = g·(f_true/f_s)²`).
 
-**What to do.** Put a tape measure across two of the static `base_N` markers that sit
-in the volume in every recording, and compare with what this analysis measures:
+**Do NOT try to validate this against the old recordings' `base_N` markers.**
+An earlier draft of this file asked for exactly that and it does not work — recorded
+here so the dead end is not walked twice. The owner measured `base_2`↔`base_4` as
+**261 mm**; the recordings put that pair at **710.7 mm**, and 261 mm matches *none* of
+the five markers' ten pairwise distances:
 
-| Marker pair | Measured distance | If the *scale* hypothesis is right, the tape should read |
-|---|---|---|
-| `base_2` ↔ `base_4` | **0.7107 m** | ≈ 0.7317 m (+21 mm) |
-| `base_1` ↔ `base_2` | **0.3149 m** | ≈ 0.3242 m (+9 mm) |
-| `base_1` ↔ `base_4` | **0.5509 m** | ≈ 0.5672 m (+16 mm) |
-| `base_3` ↔ `base_4` | **0.1165 m** | ≈ 0.1200 m (+3.5 mm) |
+    116.5   298.8   314.9   432.2   435.8   443.0   526.6   550.9   600.5   710.7  mm
 
-Use `base_2`↔`base_4` — it is the longest, so a tape resolves 2.9% most clearly
-(21 mm out of 711 mm). The measured values reproduce to **0.1 mm** across the two
-recordings, so the analysis side of the comparison is solid; any disagreement is real.
+Because it matches none of them, this cannot be a labelling mismatch — no permutation
+of names produces 261 mm. The two point sets are simply different configurations. The
+recordings are dated **2024-12-12, 16:14:59 and 16:25:26** (same session, 10.4 minutes
+apart), so the most likely explanation is that the markers were moved or re-laid in the
+months since. There is nothing to reconcile.
 
-- **Tape agrees with the measured value** → **timing**. Check the system's actual
-  frame rate and whether anything resampled the file.
-- **Tape reads ~2.9% longer** → **calibration scale**. Re-run the wand/L-frame
-  calibration and check the wand length entered in QTM.
+For reference, the five tracked marker positions (metres, QTM frame, reproducible to
+0.1 mm across both recordings). Note that QTM defines **six** markers, `base_0`
+through `base_5`, and **`base_0` was never tracked** — it has zero samples in both
+files, which is itself a plausible source of an off-by-one in any manual numbering:
+
+| label | x | y | z |
+|---|---|---|---|
+| `base_0` | — | — | — (defined, never tracked) |
+| `base_1` | +0.2280 | −0.4043 | −0.6728 |
+| `base_2` | +0.5427 | −0.3978 | −0.6809 |
+| `base_3` | +0.1062 | +0.0139 | −0.6569 |
+| `base_4` | +0.0550 | +0.1187 | −0.6561 |
+| `base_5` | +0.5343 | −0.0991 | −0.6722 |
+
+If that arrangement *does* still exist somewhere, measuring all ten distances would
+settle it outright — matching a whole five-point configuration is immune to naming, and
+the best-fit scale between the two point clouds is exactly the number in question. But
+do not spend long on it.
+
+**What to do instead — one recording, 5 minutes, and it is strictly better.**
+Tape-measure a baseline and capture it, so the comparison is contemporaneous and needs
+no assumptions about what moved when:
+
+1. Put two markers as far apart as comfortably fits the volume — **1 m or more** is
+   ideal, because the 2.9% you are testing for is then 29 mm and unmistakable.
+2. Measure centre-to-centre with a tape, and write the number down.
+3. Record **10 seconds** with both markers stationary, and send the `.qtm`.
+
+**Combine it with item 2** — put the 3–5 static markers of that recording at
+tape-measured spacings and one 30-second capture delivers both the scale check and the
+σ calibration at once.
+
+**New evidence, and it shifts the odds toward scale.** Each `.qtm` carries two
+independent-looking time stamps in `Measurement/Info`: a wall-clock date-time and a
+floating-point session clock. Across the two recordings:
+
+    session-clock delta   626.757794 s
+    wall-clock delta      626.758000 s
+    disagreement          0.206 ms over 626.8 s   =  3.3e-07 relative
+
+A 1.45% sample-rate error — the timing hypothesis — would need those two clocks to
+disagree by **9.1 seconds** here. They agree to a fifth of a millisecond. That is
+strong *if* the session clock is derived from the camera time base rather than being
+the PC clock re-expressed, and the file does not say which. QTM's own metadata schema
+does name `TimeBaseFrequency` and `TimeBaseOffset` fields, but they are absent (zero)
+in these files. So: suggestive, not conclusive — treat it as **moderate evidence
+against timing, which makes the calibration length scale the leading hypothesis.**
 
 **Why it matters.** Every absolute length and every energy figure inherits this.
 Throw heights read 2.9% low under hypothesis 1; all times read 1.45% short under
