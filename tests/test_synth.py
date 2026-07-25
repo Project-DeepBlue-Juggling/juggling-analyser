@@ -1106,6 +1106,24 @@ def test_noisy_preset_reproduces_the_three_ball_clip() -> None:
     _assert_within_factor_of_two(achieved, NOISY_TARGETS, "NOISY")
 
 
+def test_clean_preset_never_swaps_identity_and_noisy_does() -> None:
+    """A deliberate, measured split of responsibility between the two presets.
+
+    Neither real clip contains a detectable identity swap — the largest
+    single-frame step inside any ball trajectory is 26 mm against the ~0.2 m a swap
+    would leave — so `CLEAN_PRESET`, which reproduces the clean clip, has none, and
+    a swap-free case is the only one on which "100% correct linking" (PLAN.md P4)
+    is even well defined. `NOISY_PRESET` carries the failure mode anyway, because
+    DESIGN.md §12 requires it to exist somewhere in the synthetic corpus.
+    """
+    assert CLEAN_PRESET.swap_probability == 0.0
+    assert NOISY_PRESET.swap_probability > 0.0
+    _clean, clean_key = degrade(clean_calibration_truth(), np.random.default_rng(0), CLEAN_PRESET)
+    assert not clean_key.swapped_ids
+    _noisy, noisy_key = degrade(noisy_calibration_truth(), np.random.default_rng(0), NOISY_PRESET)
+    assert noisy_key.swapped_ids, "the noisy preset must exercise identity swaps"
+
+
 def test_noisy_preset_is_actually_worse_than_clean() -> None:
     """The two presets must span the corpus's quality range, not duplicate it."""
     clean = _calibration_statistics(clean_calibration_truth(), CLEAN_PRESET)

@@ -525,9 +525,22 @@ class DegradationParams:
     swap_distance: float = 3.0 * BALL_DIAMETER
 
     #: Probability that a close-enough crossing swaps the two lanes' remaining
-    #: samples. This is the failure mode the linker must survive, so it is real
-    #: rather than cosmetic: at the default a 5-ball, 16 s clip gets a handful.
-    swap_probability: float = 0.02
+    #: samples.
+    #:
+    #: **Not calibrated, and zero by default, because the corpus contains no swap
+    #: to calibrate against.** A swap at `swap_distance` leaves a single-frame
+    #: position step of order 0.2 m; the largest step inside any ball trajectory in
+    #: either real clip is 26 mm, entirely accounted for by a 7.8 m/s release. So
+    #: neither recording shows QTM carrying one trajectory id across a crossing
+    #: onto the wrong ball at a scale this test can see.
+    #:
+    #: The mechanism still has to exist — DESIGN.md §12 names identity swaps, and
+    #: a swap between balls a centimetre apart would be invisible to that step
+    #: test. :data:`NOISY_PRESET` therefore turns it on, so the failure mode is
+    #: present somewhere in the synthetic corpus, while :data:`CLEAN_PRESET` leaves
+    #: it off: a swapped trajectory has no single correct ball, so PLAN.md P4's
+    #: "100% correct linking" is only a meaningful bar on swap-free data.
+    swap_probability: float = 0.0
 
     # -- spurious reflections --------------------------------------------- #
 
@@ -626,6 +639,10 @@ class DegradationParams:
 #: Calibrated against `5_ball_juggling_cut_balls_only` — **5 balls, 4967 frames,
 #: 16.6 s**. That clip is the clean end of the range: 10 ball trajectories for
 #: 5 balls, no internal gaps, 98.5% frame coverage, reported σ median 0.441 mm.
+#:
+#: No identity swaps, because that clip shows none (see
+#: :attr:`DegradationParams.swap_probability`) — which also makes this the preset
+#: to measure PLAN.md P4's "100% correct linking" against.
 CLEAN_PRESET = DegradationParams()
 
 #: Calibrated against `3_ball_juggling_cut` — **3 balls, 9101 frames, 30.3 s**,
@@ -635,6 +652,12 @@ CLEAN_PRESET = DegradationParams()
 #: Fragmentation per ball depends on the clip's length as well as its quality,
 #: which is why the two presets are calibrated on differently-shaped clips rather
 #: than on one clip at two noise levels.
+#:
+#: This is also the preset that carries **identity swaps**: the rate is not
+#: calibrated (the corpus offers nothing to calibrate it against), but the failure
+#: mode has to be present somewhere in the synthetic corpus for the linker to be
+#: tested against it. A swapped trajectory has no single correct ball, so score
+#: linking accuracy on it accordingly.
 NOISY_PRESET = replace(
     CLEAN_PRESET,
     sigma_base_median=5.6e-4,
