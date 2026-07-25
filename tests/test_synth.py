@@ -580,6 +580,8 @@ def test_fixture_average_theorem_reports_the_held_two_as_a_finding() -> None:
 
 def test_fixtures_degrade_end_to_end() -> None:
     """Every committed fixture survives the degrader and the P1 model."""
+    if not TRUTH_FIXTURES:
+        pytest.skip(f"no truth fixtures in {data_dir() / 'truth'}")
     for path in TRUTH_FIXTURES:
         truth = read_truth(path)
         session, key = degrade(truth, np.random.default_rng(3), CLEAN_PRESET)

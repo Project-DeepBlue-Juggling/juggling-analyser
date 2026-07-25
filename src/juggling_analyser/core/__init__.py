@@ -28,19 +28,32 @@ from .link import (
     score_linking,
 )
 from .params import BALL_DIAMETER, BALL_MASS, GRAVITY, HAND_COUNT
+from .synth import (
+    CLEAN_PRESET,
+    NOISY_PRESET,
+    DegradationParams,
+    DegradationTruth,
+    Truth,
+    TruthEvent,
+    degrade,
+)
 from .trajectory import Piece, Session, Trajectory, Uncertainty
 
 __all__ = [
     "BALL_DIAMETER",
     "BALL_MASS",
+    "CLEAN_PRESET",
     "GRAVITY",
     "HAND_COUNT",
+    "NOISY_PRESET",
     "Ball",
     "BallSpan",
     "BridgedGap",
     "Carry",
     "CleanReport",
     "CollisionViolation",
+    "DegradationParams",
+    "DegradationTruth",
     "Flight",
     "FlightSegmentation",
     "FrameDiagnostics",
@@ -50,10 +63,13 @@ __all__ = [
     "Piece",
     "Session",
     "Trajectory",
+    "Truth",
+    "TruthEvent",
     "Uncertainty",
     "check_gravity",
     "classify_session",
     "classify_trajectory",
+    "degrade",
     "derive_frame",
     "estimate_ball_count",
     "event_positions",

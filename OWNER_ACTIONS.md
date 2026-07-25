@@ -182,7 +182,18 @@ Windows and macOS, which is a real portability bug independent of this branch.
    marker. If you remember what you did to that file in QTM, that confirms it. If a
    future recording has type-2 trajectories you *do* want, the gate is wrong.
 
-4. **What happened at t = 2.86 s and t = 10.96 s in `3_ball_juggling_cut`?** See item 7.
+4. **DESIGN.md §12 says the position error is Gaussian noise. It measurably is not.**
+   The genuinely white part of QTM's position error is **0.035 mm**, about a tenth of the
+   reported σ; the rest is smooth on a ~0.25 s scale. Implementing §12 literally makes
+   flight segmentation collapse from 43 flights to 3 on synthetic data that the real
+   clips handle cleanly — i.e. if the spec were right, your real data could not work.
+   `core/synth.py` therefore splits the injected error into white and smooth parts and
+   decouples its magnitude from the per-sample σ spikes, keeping the total at 3× the
+   reported σ. **This is a deviation from a frozen design document.** Recommendation:
+   amend §12 to say so, because the distinction matters to anyone reading the noise
+   model later. Full measurements in BUILD_LOG.md, Phase 3 addendum.
+
+5. **What happened at t = 2.86 s and t = 10.96 s in `3_ball_juggling_cut`?** See item 7.
 
 ---
 
@@ -241,7 +252,7 @@ fit's own parameter covariance is what the χ² needs.
 | Not done | Why | What unblocks it |
 |---|---|---|
 | Running the linker against `core/synth.py`'s output | `synth.py` landed at the very end, after P4 was already measured. The linker has therefore never been shown an identity swap or a spurious reflection, so its scores are an **upper bound**. | Nothing external — this is the first thing to do next, and it is now cheap since the degradation model and its 81 tests are in. |
-| Independently checking `synth.py`'s calibration presets | The tests that assert the calibration were written by the same agent that chose the presets. | Nothing external; just needs a second pair of eyes on the achieved-vs-target table in BUILD_LOG.md Phase 3. |
+| Independently checking `synth.py`'s calibration presets | The tests that assert the calibration were written by the same agent that chose the presets. All 18 rows are inside the required factor of two, and the two weakest (minimum fragment length, 0.68–0.69) have a stated cause. | Nothing external; a second pair of eyes on the achieved-vs-target table in BUILD_LOG.md's Phase 3 addendum. |
 | Phase 5 `core/events.py` | Ran out of budget. Its inputs all exist: flights with confidence, a derived frame, linked balls, and `z_c` = 0.947 m already computable. | Nothing external, plus your answer on item 7b. |
 | Phases 6–9 (siteswap, session JSON, viewer, metrics) | Not started. | Phase 6 in particular needs the **`441`/`531`/`552`/`423` recordings** (item 3.2) — the corpus contains only cascades, so there is no real data with mixed throw values at all. |
 | Phase 4's 7-ball criterion on real data | No 7-ball recording exists. | Item 3.8. |

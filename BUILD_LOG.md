@@ -688,3 +688,100 @@ confidence, a derived frame, and linked balls.
 | P6–P9 | **NOT STARTED** | — |
 
 Gate green at every commit; four commits, all pushed; CI green.
+
+---
+
+## Phase 3 — addendum: calibration verified, and a DESIGN.md §12 discrepancy    (2026-07-25)
+
+`core/synth.py`, `io/truth.py` and `tests/test_synth.py` are complete: 82 synth tests,
+gate green, and **all 18 calibration rows inside the required factor of two**. PLAN.md
+P3's acceptance criterion is therefore **met**, which supersedes the "not delivered"
+note above.
+
+Medians over 5 seeds, measured over the same population the real targets were measured
+over:
+
+| statistic | CLEAN target | achieved | NOISY target | achieved |
+|---|---|---|---|---|
+| trajectories per ball | 2.000 | 2.400 | 6.333 | 5.667 |
+| length, median samples | 2422 | 1872 | 1015 | 1142 |
+| length, min | 285 | 194 | 166 | 115 |
+| coverage of ball-frames | 98.46% | **98.00%** | 91.61% | **91.90%** |
+| internal gaps | 0 | **0** | 5 (median 16, max 27) | 7 (median 16, max 28) |
+| reported σ median | 0.441 mm | **0.442 mm** | 0.559 mm | 0.530 mm |
+| reported σ p90 | 1.655 mm | 1.242 mm | 2.414 mm | 1.820 mm |
+| reported σ max | 5.743 mm | 6.000 mm | 5.890 mm | 6.000 mm |
+
+Independent end-to-end check on degraded CLEAN data: 90 flights found against 83 true
+throws, **0 suspect**, and `g = 9.80148 m/s² (−0.053%)` over 76 flights. That is a
+genuinely strong result — the flight pipeline recovers `g` to half a tenth of a percent
+on data that obeys `g`, which is the cleanest available confirmation that Phase 2's
+−2.6% on the real corpus is the instrument and not the algorithm.
+
+### The discrepancy: QTM's position error is not white, and DESIGN.md §12 says it is
+
+DESIGN.md §12 and PLAN.md P3 both describe the degradation as "Gaussian position
+noise". Implemented literally — true σ = 3 × reported σ, all of it white — the model is
+not merely unrealistic but **destructive**: flight segmentation on a 5-ball fixture
+falls from 43 flights to **3**, while the real clips segment cleanly at the same
+reported σ. If the spec were right, the real data could not work.
+
+Measured cause: a third-difference estimator over 146 clean flights puts the genuinely
+**white** part of QTM's position error at **0.035 mm**, about a tenth of the reported σ.
+The rest is smooth on a ~0.25 s scale. Real mocap data is an excellent parabola in
+slightly the wrong *place*, not a noisy one — which is also exactly why Phase 2 found
+χ²/dof of 15–35 with sub-millimetre residuals.
+
+Two further measurements in the same direction: `corr(log σ_reported, log |residual|)`
+is only 0.27–0.31, and across σ deciles the residual grows ~2.7× while σ grows ~5×
+(exponent ≈ 0.6). **QTM's residual spikes are camera geometry, not position error.**
+
+So `synth.py` splits the injected error into white and smooth parts
+(`white_error_fraction = 0.10`, `smooth_error_seconds = 0.25`) and decouples its
+magnitude from the per-sample σ spikes (`error_sigma_coupling = 0.5`). The *total*
+magnitude is still `sigma_report_factor` × reported σ, pinned by a test at 3.00× ± 5%,
+so the "reported σ understates the truth" contract is unchanged. This is a deviation
+from a frozen design document and is flagged for the owner in OWNER_ACTIONS.md.
+
+### Identity swaps are off in CLEAN, and deliberately
+
+`swap_probability` is **0.0 in CLEAN_PRESET and 0.05 in NOISY_PRESET**. The reasoning is
+sound and worth keeping: a swap leaves a ~0.2 m single-frame step, and the largest step
+inside *any* ball trajectory in *either* real clip is **26 mm**, fully explained by a
+7.8 m/s release. The corpus therefore contains no swap to calibrate against, and an
+uncalibrated failure mode does not belong in the preset that reproduces the clean clip.
+NOISY carries it so the failure mode exists somewhere (8 swapped trajectories at seed 0).
+
+### Correction to a claim in the delivery report
+
+The delivering agent suggested that Phase 4's 0.615 five-ball figure "was measured
+against a CLEAN_PRESET that then had `swap_probability = 0.02`" and should be
+re-measured. **That is not the case, and it was checked rather than accepted:**
+`tests/test_link.py` imports nothing from `core.synth` — no `degrade`, no preset — and
+fragments the raw Airtime fixtures with its own helper and its own Gaussian noise,
+precisely so that a change to the degradation model cannot move what "100% correct
+linking" means. The 0.615 is independent of every synth parameter. It stands as a real
+linker shortfall.
+
+What *is* still true is the converse, and it remains the top item of outstanding work:
+the linker has **never been run against `degrade()` output**, so it has never seen an
+identity swap or a spurious reflection, and its scores are an upper bound.
+
+### Deferred / open
+
+- `cascade_truth()`, an arbitrary-length cascade truth generator, lives in
+  `tests/test_synth.py`. P6 will want it; promoting it into `core/synth.py` would be
+  cleaner than importing across test modules.
+- The reported-σ p90 sits at 0.75 of target in both presets. The real distribution is
+  heavier between median and p90 than a log-normal can be (p90/median = 3.75 needs
+  `sd(log σ) = 1.03`, but the measured within-trajectory spread is 0.73–0.78) and
+  lighter above p99. The measured log-spread was matched rather than the p90, so no
+  single quantile is fitted at another's expense — but a two-component σ model would do
+  better.
+- `swap_distance` is 3 ball diameters, not one, because the Airtime fixtures are planar
+  (`y ≡ 0`) and their minimum ball separation is 138–199 mm; at one diameter the swap
+  path would never fire and would go untested.
+- The average theorem holds exactly for `3/4/5/7` and fails for `441` (3.025), `531`
+  (3.05), `423` (3.519) and `552` (5.000 against 4 balls) — the last two because held
+  `2`s emit no throw event, so the mean is over the throws that exist. Exposed as data,
+  not raised, which is the right call.

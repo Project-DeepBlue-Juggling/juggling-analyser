@@ -5,5 +5,13 @@ by the tests and never by the pipeline (DESIGN.md §4).
 """
 
 from .qtm import QtmScan, TrajectoryObject, read_qtm, scan_qtm
+from .truth import read_truth, read_truth_document
 
-__all__ = ["QtmScan", "TrajectoryObject", "read_qtm", "scan_qtm"]
+__all__ = [
+    "QtmScan",
+    "TrajectoryObject",
+    "read_qtm",
+    "read_truth",
+    "read_truth_document",
+    "scan_qtm",
+]
