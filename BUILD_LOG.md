@@ -473,7 +473,18 @@ Also: `7.json` uses the same τ_b = 0.25 s as the rest, giving a 2.58 m apex —
 unrealistic for 7 balls, but perfectly valid labelled data. The exporter takes
 `--beat-period` if realistic heights are wanted.
 
-### `core/synth.py` — NOT DELIVERED
+### `core/synth.py` — LANDED LATE, UNTESTED
+
+**Note added after the Phase 3 entry was written.** `core/synth.py` (1147 lines) and
+`io/truth.py` (381 lines) arrived near the end of the run, after the P3 assessment
+below was recorded and after the P4 work had already been validated without them.
+They import cleanly, pass the core-purity AST walk, and are ruff- and mypy-clean, but
+**`tests/test_synth.py` did not arrive, so neither module has a single test and the
+calibration below has not been verified.** Treat them as unreviewed drafts: the next
+session should write the tests, check the calibration table, and only then rely on
+them. Everything in the rest of this section stands as written.
+
+### What `core/synth.py` was specified to do
 
 The degradation model (Gaussian noise, apex/crossing dropouts, fragmentation,
 identity swaps, spurious reflections) was specified in full, with calibration
@@ -597,3 +608,78 @@ is the first thing to do in this area.
 - `score_linking` matches lanes to true balls by maximum agreement before scoring,
   because lane ids are arbitrary. Spurious trajectories (truth `-1`) are excluded:
   whether a reflection reaches a lane is `core.clean`'s job.
+
+---
+
+## Phase 5 — Events, hands, runs, drops    NOT BUILT — but measured (2026-07-25)
+
+`core/events.py` was **not written**; the run ended first. What follows is a
+measurement taken directly from the Phase 2 flight segmentation, because a catch is
+the end of a flight and therefore needs no ball identity. It is the most useful thing
+that could be said about the headline acceptance test without building the phase, and
+it is a **finding to check against the recording**, not a result.
+
+### The headline number, measured
+
+On `3_ball_juggling_cut`, counting untruncated flight ends on ball trajectories,
+excluding suspect flights:
+
+    total catch-like events           55        owner's ground truth: 22 + 2 + 31 = 55
+    split at the 3.6 s dead gap       28 / 27   owner's ground truth: 24 / 31
+
+**The total agrees exactly. The split does not.** Both facts matter, and neither is
+adjustable: the total is not a coincidence at n = 55, and a 28/27 split is not a
+rounding of 24/31.
+
+### Everything the owner needs to check it, with timestamps
+
+- **Dead time 11.60 s → 15.20 s** (3.60 s, the largest inter-catch interval in the
+  clip; the median is 0.482 s). Taken as the boundary between run 1 and run 2.
+- **Drop candidate at t = 10.96 s**: a flight ends at **z = −0.172 m**, i.e. 1.12 m
+  below the catch plane `z_c = 0.947 m`. A ball on the floor. **26 catches precede
+  it** and **1 follows it** before the dead time — against the owner's 22 and 2.
+- **Second low flight end at t = 2.86 s, z = 0.492 m** (0.46 m below `z_c`). The
+  owner reports only one drop in this recording, so this is either a very low catch,
+  a bounce, or a second drop that the manual count treated differently. **Worth
+  looking at**: if it is a drop, the run structure is not what either count assumes.
+- **7 of the 62 detected flights have a truncated end** — tracking died mid-flight,
+  so their catch is real but unobserved and is *not* in the 55. If four of those fall
+  in run 2, that alone reconciles 27 with the owner's 31. The 3-ball clip tracks only
+  69% of its ball-frames, so this is the most likely single explanation for the
+  split.
+- Note also that the floor impact at 10.96 s is currently *counted* as a flight end.
+  A ball hitting the floor is not a catch, so the real figure is 54 + 1 impact, and
+  DESIGN.md §6's below-`z_c` rule is exactly what would separate them.
+
+### Best hypothesis
+
+The total is right because the flight segmenter is sound (Phase 2). The split is
+wrong because run 2's catches are systematically under-counted by truncated flights,
+and run 1's over-counted by including the floor impact and possibly by an earlier
+event at 2.86 s that the manual count did not treat as a drop. Nothing here requires
+the segmenter to change; it requires the drop rule, the collection-catch rule and the
+truncated-flight rule that Phase 5 was to build.
+
+### What Phase 5 still needs
+
+Hand assignment by k-means along the derived hand axis, `z_c` as the median catch
+height (already computable — 0.947 m in the QTM frame on this clip), the
+below-`z_c − 0.30 m` drop rule, run segmentation with `end_reason`, and the
+collection-catch rule of DESIGN.md §6. All of it now has its inputs: flights with
+confidence, a derived frame, and linked balls.
+
+---
+
+## Run summary — where this build stopped
+
+| Phase | Status | Acceptance |
+|---|---|---|
+| P0 toolchain, gate, CI | **DONE** | all criteria met; CI green on 3.11 and 3.12 |
+| P1 reader v2 | **DONE** | all criteria met, positions exact to 5.0e-07 m |
+| P2 flight + frame | **PARTIAL** | 3 of 4; fitted `g` is −2.6%, an instrument finding |
+| P3 synthetic truth | **PARTIAL** | Airtime exporter + 8 fixtures done; `core/synth.py` not built |
+| P4 linking | **PARTIAL** | real 5-ball clip exact; synthetic 5-ball 0.615 against a 1.0 target |
+| P5 events | **NOT BUILT** | measured only: total catches 55/55, split 28/27 vs 24/31 |
+| P6–P9 | **NOT STARTED** | — |
+
+Gate green at every commit; four commits, all pushed; CI green.

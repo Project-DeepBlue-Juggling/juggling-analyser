@@ -116,7 +116,9 @@ Built phase by phase against [`PLAN.md`](PLAN.md); the design is frozen in
 - [~] Identity linking — trajectories → balls across gaps. The real 5-ball clip
       links into exactly 5 balls tiling the clip with 383 frames of gap; the
       synthetic 5-ball case falls short of 100% *(P4, see BUILD_LOG)*
-- [ ] Events — throws, catches, apexes, drops, hands, runs *(P5)*
+- [ ] Events — throws, catches, apexes, drops, hands, runs *(P5 — not built, but
+      the headline catch total already measures 55 against a hand-counted 55;
+      the run split does not yet agree, see OWNER_ACTIONS)*
 - [ ] Siteswap extraction from the beat grid *(P6)*
 - [ ] Versioned session JSON *(P7)*
 - [ ] 3D replay with configurable trails *(P8)*

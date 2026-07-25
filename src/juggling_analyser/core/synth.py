@@ -644,7 +644,7 @@ NOISY_PRESET = replace(
     crossing_dropout_probability=0.02,
     gap_median_seconds=0.38,
     gap_log_spread=0.55,
-    internal_gap_fraction=0.24,
+    internal_gap_fraction=0.30,
     swap_probability=0.05,
     spurious_rate=1.1,
 )
