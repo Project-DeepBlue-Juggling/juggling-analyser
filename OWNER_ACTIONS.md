@@ -7,9 +7,9 @@ Each item says what to do, why, which phase it unblocks, and roughly how long.
 should tell you everything without opening a line of code.
 
 **Where the build got to:** P0 and P1 fully green, P2 and P4 partial with their
-shortfalls measured and recorded, P3 half done (Airtime's exporter and fixtures yes,
-the degradation model no), P5 not built but measured, P6–P9 not started. Four
-commits, all pushed, CI green, gate green at every commit. Honest summary at the end.
+shortfalls measured and recorded, P3 complete (exporter, fixtures and degradation
+model, 81 tests), P5 not built but measured, P6–P9 not started. Six commits, all
+pushed, CI green, gate green at every commit. Honest summary at the end.
 
 ---
 
@@ -240,7 +240,8 @@ fit's own parameter covariance is what the χ² needs.
 
 | Not done | Why | What unblocks it |
 |---|---|---|
-| `core/synth.py` — the mocap degradation model | Ran out of run budget; it was specified in full and delegated but did not land. Calibration targets are preserved in BUILD_LOG.md Phase 3. | Nothing external. It is the next thing to build, and it matters: the linker has never seen an identity swap or a spurious reflection, so its measured scores are an **upper bound**. |
+| Running the linker against `core/synth.py`'s output | `synth.py` landed at the very end, after P4 was already measured. The linker has therefore never been shown an identity swap or a spurious reflection, so its scores are an **upper bound**. | Nothing external — this is the first thing to do next, and it is now cheap since the degradation model and its 81 tests are in. |
+| Independently checking `synth.py`'s calibration presets | The tests that assert the calibration were written by the same agent that chose the presets. | Nothing external; just needs a second pair of eyes on the achieved-vs-target table in BUILD_LOG.md Phase 3. |
 | Phase 5 `core/events.py` | Ran out of budget. Its inputs all exist: flights with confidence, a derived frame, linked balls, and `z_c` = 0.947 m already computable. | Nothing external, plus your answer on item 7b. |
 | Phases 6–9 (siteswap, session JSON, viewer, metrics) | Not started. | Phase 6 in particular needs the **`441`/`531`/`552`/`423` recordings** (item 3.2) — the corpus contains only cascades, so there is no real data with mixed throw values at all. |
 | Phase 4's 7-ball criterion on real data | No 7-ball recording exists. | Item 3.8. |

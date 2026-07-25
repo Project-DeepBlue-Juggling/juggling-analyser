@@ -7,7 +7,7 @@ notation, how many catches you made before a drop, how high and how consistently
 you throw, and how much work you're doing — plus a 3D replay of the session with
 configurable ball trails.
 
-> **Status: early alpha — Phase 4 of 10.** Ingestion is finished and pinned: the
+> **Status: early alpha — Phases 0–4 of 10.** Ingestion is finished and pinned: the
 > reader reproduces a QTM TSV export of the 5-ball clip frame for frame for all 19
 > trajectories, to 5.0e-07 m — the export's own rounding floor. Flight segmentation
 > and the derived juggling frame are in, and they found something: measured gravity
@@ -111,8 +111,8 @@ Built phase by phase against [`PLAN.md`](PLAN.md); the design is frozen in
       uncertainty, phantom-series fix, pinned against a TSV oracle *(P1)*
 - [x] Flight segmentation + derived juggling frame *(P2 — the `g` self-check
       fails on the current corpus; see BUILD_LOG)*
-- [~] Synthetic ground truth — Airtime's exporter and 8 labelled fixtures are in
-      (`data/truth/`); this repo's degradation model is **not** built yet *(P3)*
+- [x] Synthetic ground truth — Airtime's exporter, 8 labelled fixtures in
+      `data/truth/`, and this repo's mocap degradation model *(P3)*
 - [~] Identity linking — trajectories → balls across gaps. The real 5-ball clip
       links into exactly 5 balls tiling the clip with 383 frames of gap; the
       synthetic 5-ball case falls short of 100% *(P4, see BUILD_LOG)*
