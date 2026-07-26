@@ -1330,3 +1330,100 @@ length:
     g from this recording   inconclusive: 8.5 to 10.2 depending on two unknowns
     2026 juggling clip      -5.41%, unexplained, treated as unreliable
     implied clock           303.8 Hz against a reported 300, i.e. ~1.3% fast
+
+---
+
+## REVERSAL: the clock is fine. The problem is in the vertical positions (2026-07-26)
+
+The owner supplied the missing length by tape: **pivot to the middle of the 200 g mass =
+1285 mm**, and lower marker to the middle of the mass ≈ 120 mm. That makes the string
+pendulum decisive, and it overturns the previous entry's conclusion.
+
+### The clock is not fast
+
+    g = 4 pi^2 x 1.285 / 2.270417^2  =  9.8413 m/s^2   (+0.35% vs 9.80665)
+
+    predicted T0 if g = 9.80665                        2.274422 s
+    predicted T0 if the clock were 1.3% fast            2.303347 s
+    MEASURED T0                                        2.270417 s  (sem 0.56 ms)
+
+The clock hypothesis is **59 sigma** away. And the conclusion is robust to the geometry
+ambiguity: using my own fitted `r_lower` of 1152.4 mm plus the owner's 120 mm offset gives
+`L = 1272.4 mm` and `g = 9.745` (−0.63%) — still nowhere near the 1248.5 mm that a −2.5%
+deficit would require. The tape would have to be 37 mm long, on a direct measurement of
+exactly the quantity needed.
+
+The geometry cross-check also vindicates the method: the owner's pivot-to-lower-marker
+distance is 1285 − 120 = **1165 mm**, against my rigid-body fit of **1152.4 mm** (12.6 mm,
+~1%) and the algebraic sphere fit of 1114.1 mm (50.9 mm off). Trusting the rigid-body fit
+over the sphere fits was right.
+
+### Retraction: the rigid pendulum's −2.50% was not robust
+
+The previous entry reported a three-way convergence at −2.50% and called it "not a
+coincidence". **That was overstated, and one leg of it was mine.** The rigid pendulum's
+9.5619 assumed the extrusion runs from the pivot down to the bob with nothing above the
+pivot. I never asked. Mass *above* the pivot has negative `r`: it adds to `Σm r²` while
+subtracting from `Σm r`, so an overhang raises `L_eq`:
+
+    overhang above pivot     L_eq        g      vs 9.80665
+                    0 mm   861.1 mm   9.5619      -2.50%
+                   50 mm   866.2 mm   9.6188      -1.92%
+                  100 mm   873.5 mm   9.6998      -1.09%
+                  150 mm   883.1 mm   9.8071      +0.00%
+                  200 mm   895.4 mm   9.9430      +1.39%
+
+A 150 mm overhang alone accounts for the entire deficit. So the rigid pendulum never
+constrained anything, and the "three-way convergence" was two ballistic measurements from
+the same 2024 session plus a number that had a free parameter I had not identified.
+
+### What the contradiction now points at
+
+A pendulum measures `g` from a **tape length** and the **clock**. It barely uses mocap
+positions at all — only to locate zero crossings, which are times. A ballistic fit
+measures `g` from mocap **vertical positions** and the clock. From the same session, same
+clock:
+
+    string pendulum (tape length + clock)   9.8413   (+0.35%)
+    juggling, same day (mocap positions)    9.2757   (-5.41%)
+
+The clock is common to both and is now verified. **So the discrepancy is in the
+positions**, specifically the vertical ones during flight.
+
+Crucially, none of the four length checks can see this. Each is a pair of markers at fixed
+places measuring an *integrated* distance:
+
+    string pendulum bob   z = 0.161 to 0.181 m   (20 mm of vertical travel; the motion is horizontal)
+    juggling balls        z = 0.867 to 1.675 m   (800 mm - all the vertical travel there is)
+    vertical 1 m baseline z = 0.482 to 1.479 m   (integrated scale over that span only)
+
+A **local** vertical scale error — the volume mildly distorted so that `dz_measured/dz_true`
+differs from 1 in the band where the balls fly, while integrating to ~1 over a long static
+baseline — fits every observation. It also explains why the parabola fits stay excellent:
+a *linear* local scale maps a parabola to a parabola, so `g_apparent = f'·g` with no
+residual penalty, which is exactly what is seen (0.25–0.8 mm residuals with `g` 5% low).
+
+### The next measurement, and it is the owner's idea
+
+The owner proposes mounting a marker on the tip of a **linear actuator** — identical to
+Jugglebot's legs — driving it sinusoidally and logging **encoder position at ~100 Hz**.
+That is the right instrument and it is better than a clock test, because the encoder is an
+independent standard for **both** quantities at once:
+
+* **frequency measured / frequency commanded** = the clock ratio, needing no length;
+* **encoder position vs mocap position, sample by sample** = the mocap's position error as
+  a function of where it is in the volume — which is precisely the quantity now under
+  suspicion, and which no static baseline can reveal.
+
+Specific requests recorded in OWNER_ACTIONS: mount it **vertically**, put the stroke in the
+**z ≈ 0.9–1.7 m** band where the balls fly, run 60 s or more, and if possible include a
+sharp step at the start so the two time bases can be aligned exactly.
+
+### Standing tally, revised
+
+    lengths, integrated     verified in four orientations, all within +/-0.33%
+    the capture clock       VERIFIED FINE, 59 sigma, string pendulum with a tape length
+    rigid pendulum          RETRACTED - free parameter (overhang) spans the whole effect
+    2024 ballistic          -2.51%, -2.49%   (mocap vertical positions)
+    2026 ballistic          -5.41%           (mocap vertical positions)
+    prime suspect           LOCAL vertical position distortion in the capture volume

@@ -13,68 +13,88 @@ pushed, CI green, gate green at every commit. Honest summary at the end.
 
 ---
 
-## 1. Time the clock directly — stop measuring `g`
+## 1. Yes — do the actuator test, and mount it vertically
 
-Your string pendulum gave a beautiful period (**T0 = 2.270417 s**, 26 cycles, 0.025%
-precision) and a fourth confirmation that lengths are correct (**1002.22 mm** against your
-1000 mm tape, +0.222%). But it cannot settle `g`, and the reason is now a pattern rather
-than bad luck.
+**Your 1285 mm settles the clock question, and it goes the other way from what I said last
+time.** With the tape-measured pivot-to-mass length:
 
-**Every route so far has bottomed out on a length I cannot see from the markers:**
+    g = 4 pi^2 x 1.285 / 2.270417^2  =  9.8413 m/s^2   (+0.35%)
 
-| recording | what it fixed | what blocked it |
-|---|---|---|
-| horizontal 1 m | isotropic scale excluded | says nothing about Z |
-| vertical 1 m | vertical scale excluded | says nothing about the clock |
-| rigid pendulum | mass distribution known | rod-length assumption, ±3% |
-| string pendulum | scale confirmed again | bob depth unknown, ±3% |
+    predicted T0 if g = 9.80665              2.274422 s
+    predicted T0 if the clock were 1.3% fast 2.303347 s
+    MEASURED T0                              2.270417 s   (sem 0.56 ms)
 
-That is structural. **Any measurement from marker positions plus the capture clock gives
-`g/L`, never `g`** — and the only lengths I can see are marker radii, which are not the
-effective length. For this recording the markers are on the *string*, so the two live
-hypotheses need the bob's centre 128 mm versus 96 mm below the lower marker — just 32 mm
-apart — and the geometry itself carries ±20 mm of slop, because two independent sphere
-fits to the two arcs put their centres 53 mm apart, which a straight pendulum on a fixed
-pivot cannot do.
+The clock hypothesis is **59 sigma** away. It is dead. And the result is robust to the
+remaining geometric slop: even using my own fitted pivot distance plus your 120 mm offset
+gives `g = 9.745`, still nowhere near the 9.56 the deficit would need.
 
-**So let us stop measuring `g` and measure the clock.** Neither of these needs a length.
+Your geometry also vindicates the fit I trusted: your pivot-to-lower-marker distance is
+1285 − 120 = **1165 mm**, against my rigid-body fit of **1152.4 mm** (~1%) and the sphere
+fit's 1114.1 mm.
 
-### Option A — a timed capture (5 minutes, needs nothing but a phone)
+### I have to retract the −2.50% "convergence"
 
-Set QTM to capture **300 s** and time it with a stopwatch, starting and stopping with the
-capture. At the implied 303.8 Hz a nominal 300 s capture finishes in **296.2 s** — 3.8 s
-short, against roughly 0.3 s of human reaction time. Ten to one, and completely
-independent of every model in this project.
+Last message I reported three measurements converging on −2.50% and said it was not a
+coincidence. **That was overstated, and the error was mine.** The rigid pendulum's 9.5619
+assumed the extrusion has nothing above the pivot. I never asked. Mass above the pivot
+raises the effective length, and a **150 mm overhang alone accounts for the entire
+deficit**:
 
-### Option B — drive something at a known frequency (better, and your rig can do it)
+    overhang    0 mm -> g = 9.5619     100 mm -> 9.6998     150 mm -> 9.8071
 
-**Command Jugglebot's platform to oscillate at a precisely known rate** — say exactly
-1.000 Hz from its own controller — and record 60 s. Then
+So that leg never constrained anything, and what remained was two ballistic measurements
+from the same 2024 session. I should have identified that free parameter before drawing a
+conclusion from it.
 
-    measured frequency / commanded frequency  =  f_s_reported / f_true
+### Where that leaves things — and why your actuator idea is exactly right
 
-No lengths, no reaction time, and the precision improves with recording length. The
-robot's controller is an independent time standard already sitting in the capture volume,
-which is the one thing this investigation has been missing throughout.
+A pendulum gets `g` from a **tape length** and the **clock**. A ballistic fit gets it from
+mocap **vertical positions** and the clock. Same session, same clock:
 
-If the answer comes back 1.000, the clock is fine and the ballistic deficit is something I
-have not found — and I would want to start again from the raw samples. If it comes back
-near 0.987, we have it.
+    string pendulum (tape + clock)      9.8413   (+0.35%)
+    juggling, same day (mocap z)        9.2757   (-5.41%)
 
-### Where the evidence stands
+The clock is common and now verified, so **the discrepancy is in the vertical positions.**
 
-    lengths                verified in four orientations, all within +/-0.33%
-    g from three methods   -2.51%, -2.49%, -2.50%  (2024 ballistic x2, rigid pendulum)
-    g from this recording  inconclusive: 8.5 to 10.2 depending on two unknowns
-    2026 juggling clip     -5.41%, unexplained, treated as unreliable
-    implied clock          303.8 Hz against a reported 300, i.e. ~1.3% fast
+And here is why none of the four length checks caught it: each is a pair of markers at
+fixed places measuring an *integrated* distance. The string pendulum's bob travels only
+**20 mm** vertically — its motion is horizontal. The balls travel **800 mm** vertically.
+A *local* vertical scale error, where `dz_measured/dz_true` differs from 1 in the band the
+balls occupy while still integrating to ~1 over a static 1 m baseline, fits every
+observation I have. It also explains why the parabola fits stay excellent: a linear local
+scale maps a parabola to a parabola, giving `g_apparent = f'·g` with no fit residual —
+exactly what is seen, 0.25–0.8 mm residuals with `g` 5% low.
 
-One note on instrument choice, since it is counter-intuitive: the **rigid** pendulum was
-the better instrument. Its pivot wobbled 0.05 mm against the string's 0.61 mm, and its
-radii were stable to 0.09 and 0.52 mm. A string trades a known mass distribution for an
-unknown geometry. If you ever want to close this with a pendulum after all, the way is a
-rigid arm with **a marker stuck directly on the bob** — then the effective length is
-measured, not assumed.
+**Your actuator is better than a clock test**, because the encoder is an independent
+standard for *both* quantities at once:
+
+* **measured frequency / commanded frequency** → the clock ratio, needing no length;
+* **encoder position vs mocap position, sample by sample** → the mocap's position error as
+  a function of where it is in the volume. That is precisely the quantity now under
+  suspicion, and no static baseline can reveal it.
+
+### How to get the most out of it
+
+1. **Mount it vertically**, and put the stroke in the **z ≈ 0.9–1.7 m** band where the
+   balls actually fly. That is where the anomaly lives. A horizontal mounting would test
+   the axis that is already known to be fine.
+2. **Run 60 s or more.** The frequency ratio's precision grows with record length; a 1.3%
+   clock error would show as 0.8 s of drift over 60 s, which is unmissable.
+3. **Include a sharp step or a sudden stop** at the start or end. That gives both systems
+   a common event to align on, so I can lock the time bases exactly rather than inferring
+   the offset by cross-correlation.
+4. **If you can, add a slow staircase** — step through the stroke and hold for a second at
+   each of a dozen heights. The sinusoid is the better clock test; a staircase is the
+   better *position* test, giving clean static comparisons at many heights and mapping the
+   local scale directly.
+5. 100 Hz encoder logging is plenty — I will interpolate. What matters more is that the
+   encoder timestamps come from the controller's own clock and that you tell me the
+   commanded profile exactly (frequency, amplitude, and the stroke's zero reference).
+
+If the encoder and mocap agree on both position and frequency, then the ballistic anomaly
+is something else again and I would want to go back to the raw camera-level data. But I do
+not expect that — this is the first instrument in the chain that can see the quantity that
+is now in question.
 
 ---
 
