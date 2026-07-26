@@ -1239,3 +1239,94 @@ a 26 ms difference per cycle, against a period measured to **0.06 ms**. That is 
 Alternatively, and independent of all physics: **time a 5-minute capture with a
 stopwatch.** At 303.8 Hz a nominal 300 s capture finishes in **296.2 s**, a 3.8 s
 discrepancy.
+
+---
+
+## String pendulum: a fourth scale confirmation, but `g` is still not settled (2026-07-26)
+
+`data/2026-07-26-1.0m_markers_string_pendulum_calibration.qtm` — 18 000 frames, 60 s,
+two markers on a string pendulum a tape-measured 1000 mm apart.
+
+### What it settles
+
+**Scale, for the fourth time.** Marker separation **1002.22 mm** against a tape-measured
+1000 mm, `sd = 0.457 mm` over 18 000 frames — **+0.222%**, inside tape precision. The four
+independent length checks now read +0.056% (horizontal), −0.328% (vertical), +0.083%
+(swept), +0.222% (this one). Lengths are correct.
+
+**The period, to 0.025%.** 26 complete cycles over 59.128 s, amplitude decaying 10.37° to
+8.08°, per-cycle finite-amplitude correction applied:
+
+    T0 = 2.270417 s   sd across cycles 2.85 ms   sem 0.56 ms
+
+### What it does not settle, and why
+
+`g = 4π²L/T0²` needs the pivot-to-bob-**centre-of-mass** distance, and the markers are on
+the *string*, not on the bob. Two unknowns remain, and both are the same size as the
+effect:
+
+**1. The bob's depth below the lower marker is unknown.** With the best geometry
+(`r_lower = 1152.4 mm`):
+
+    g = 9.80665 (no deficit)   needs the bob 128.1 mm below the lower marker
+    g = 9.5619  (the -2.50%)   needs the bob  96.1 mm below the lower marker
+
+Only **32 mm** apart.
+
+**2. The geometry itself is softer than the rigid pendulum's.** Two independent algebraic
+sphere fits to the two markers' arcs put their centres **53 mm apart** and give
+`r_lower − r_upper = 949.5 mm` where the measured separation is 1002.2 mm. A straight
+pendulum on a fixed pivot cannot do that. The rigid-body fit is the more trustworthy one —
+its radius ratio 7.672 matches the measured chord ratio 7.767, where the sphere fits give
+6.764 — but the disagreement is real evidence that the string is not perfectly straight or
+the pivot is not a fixed point. Call it ±20 mm on `r_lower`, which is ±1.7% on `g`.
+
+So even a perfect ruler measurement of the bob depth would leave this marginal. `g` as a
+function of both unknowns:
+
+    bob depth (mm)      0      40      80      96     110     128     160
+    r = 1114 mm     8.532   8.838   9.144   9.267   9.374   9.512   9.757
+    r = 1152 mm     8.823   9.129   9.435   9.558   9.665   9.803  10.048
+    r = 1170 mm     8.961   9.267   9.573   9.696   9.803   9.941  10.186
+
+Ironically the **rigid** pendulum was the better instrument: its pivot wobbled 0.05 mm
+against this one's 0.61 mm, and its radii were stable to 0.09 and 0.52 mm. A string trades
+a known mass distribution for an unknown geometry.
+
+### The pattern, and the change of approach
+
+Four recordings, four different routes, and every one has bottomed out on **a length that
+cannot be seen from the marker positions**:
+
+| recording | what it fixed | what blocked it |
+|---|---|---|
+| horizontal 1 m | isotropic scale excluded | says nothing about Z |
+| vertical 1 m | vertical scale excluded | says nothing about the clock |
+| rigid pendulum | mass distribution known | rod-length assumption, ±3% |
+| string pendulum | scale confirmed again | bob depth unknown, ±3% |
+
+This is not bad luck, it is structural: **any measurement made from marker positions and
+the capture clock yields `g/L`, never `g`.** Getting `g` needs a length, and the only
+lengths available are marker radii, which are not the effective length. Every pendulum
+variant will hit this.
+
+**So stop measuring `g` and measure the clock directly.** Two ways, neither needing a
+length:
+
+1. **A timed capture.** Set QTM to capture 300 s and time it with a phone stopwatch. At
+   the implied 303.8 Hz a nominal 300 s capture finishes in **296.2 s** — 3.8 s short,
+   against ~0.3 s of human reaction time. Ten-to-one signal to noise, five minutes' work.
+2. **Better, and this rig can do it: drive something at a known frequency.** Command
+   Jugglebot's platform to oscillate at a precisely known rate — say exactly 1.000 Hz from
+   its own controller — and record 60 s of it. The measured frequency divided by the
+   commanded frequency *is* `f_s_reported / f_true`, with no lengths, no reaction time, and
+   precision that improves with recording length. The robot's clock is an independent time
+   standard already sitting in the capture volume.
+
+### Standing tally
+
+    lengths                verified in four orientations, all within +/-0.33%
+    g from three methods   -2.51%, -2.49%, -2.50%  (2024 ballistic x2, rigid pendulum)
+    g from this recording   inconclusive: 8.5 to 10.2 depending on two unknowns
+    2026 juggling clip      -5.41%, unexplained, treated as unreliable
+    implied clock           303.8 Hz against a reported 300, i.e. ~1.3% fast

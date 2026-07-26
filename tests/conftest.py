@@ -75,6 +75,11 @@ VERTICAL_CALIBRATION_QTM = "2026-07-25-1m_markers_vertical_calibration.qtm"
 PENDULUM_QTM = "2026-07-25-0.95m_markers_pendulum_calibration.qtm"
 PENDULUM_KNOWN_DISTANCE = 0.95
 
+#: A 60 s string-pendulum run, markers a tape-measured 1000 mm apart on the string.
+#: A fourth independent length check, and the longest recording in the corpus.
+STRING_PENDULUM_QTM = "2026-07-26-1.0m_markers_string_pendulum_calibration.qtm"
+STRING_PENDULUM_KNOWN_DISTANCE = 1.000
+
 #: Recordings that contain juggling. The calibration clips other than the 1 m one do not.
 JUGGLING_QTM_SAMPLES = [
     p for p in QTM_SAMPLES if not any(k in p.name for k in ("vertical", "pendulum"))

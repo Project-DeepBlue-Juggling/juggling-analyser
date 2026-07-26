@@ -20,6 +20,7 @@ from .conftest import (
     JUGGLING_QTM_SAMPLES,
     PENDULUM_QTM,
     QTM_SAMPLES,
+    STRING_PENDULUM_QTM,
     VERTICAL_CALIBRATION_QTM,
     sample,
 )
@@ -130,7 +131,7 @@ def test_load_helper_classifies() -> None:
     assert all(t.kind != "unknown" or t.n_samples >= 15 for t in session.trajectories)
 
 
-@pytest.mark.parametrize("name", [VERTICAL_CALIBRATION_QTM, PENDULUM_QTM])
+@pytest.mark.parametrize("name", [VERTICAL_CALIBRATION_QTM, PENDULUM_QTM, STRING_PENDULUM_QTM])
 def test_a_scene_with_no_juggling_yields_no_balls(name: str) -> None:
     """The negative case: a recording with nothing thrown must produce no ball.
 

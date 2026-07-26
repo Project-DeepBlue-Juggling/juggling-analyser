@@ -27,6 +27,8 @@ from .conftest import (
     CALIBRATION_TAPE_TOLERANCE,
     PENDULUM_KNOWN_DISTANCE,
     PENDULUM_QTM,
+    STRING_PENDULUM_KNOWN_DISTANCE,
+    STRING_PENDULUM_QTM,
     VERTICAL_CALIBRATION_QTM,
     sample,
 )
@@ -352,3 +354,28 @@ def test_pendulum_period_is_pinned() -> None:
     assert len(upward) == 6, f"expected 6 upward crossings, got {len(upward)}"
     period = (upward[-1] - upward[0]) / (len(upward) - 1)
     assert period == pytest.approx(1.900468, abs=1e-4)
+
+
+def test_string_pendulum_is_a_fourth_length_oracle() -> None:
+    """The fourth independent length check, and the longest recording in the corpus.
+
+    Two markers a tape-measured 1000 mm apart on a swinging string, held rigid across
+    18 000 frames. Together with the horizontal (+0.056%), vertical (−0.328%) and swept
+    (+0.083%) checks, this closes the question of whether any axis of the capture volume
+    is mis-scaled. It is not — which is what leaves the capture clock as the only
+    remaining explanation of the gravity deficit (BUILD_LOG, "String pendulum").
+    """
+    session = read_qtm(sample(STRING_PENDULUM_QTM), include_unexported=True)
+    trajectories = {t.id: t for t in session.trajectories}
+    upper, lower = trajectories["68"], trajectories["72"]
+    shared = np.intersect1d(upper.frames, lower.frames)
+    assert len(shared) == 18000, "the whole 60 s should have both markers"
+    separation = np.linalg.norm(
+        lower.positions[np.isin(lower.frames, shared)]
+        - upper.positions[np.isin(upper.frames, shared)],
+        axis=1,
+    )
+    assert separation.mean() == pytest.approx(STRING_PENDULUM_KNOWN_DISTANCE, abs=0.005)
+    assert separation.mean() == pytest.approx(1.00222, abs=1e-4), "the pinned value"
+    # Rigid to half a millimetre across a minute of swinging.
+    assert separation.std() < 1e-3
